@@ -19,7 +19,7 @@
 
   // ---------- تحميل الصور (الناقص ينرسم مستطيل بديل) ----------
   const IMG = {};
-  const FILES = { ground_top: 'ground_top.png', ground_fill: 'ground_fill.png', brick: 'brick.png', box: 'box.png', box_used: 'box_used.png', block: 'block.png', pipe_top: 'pipe_top.png', pipe_body: 'pipe_body.png', coin: 'coin.png', enemy1: 'enemy1.png', flag: 'flag.png', goal: 'goal.png', bg_far: 'bg_far.jpg', bg_mid: 'bg_mid.png', item_grow: 'item_grow.png', item_weapon: 'item_weapon.png', shot: 'shot.png' };
+  const FILES = { ground_top: 'ground_top.png', ground_fill: 'ground_fill.png', brick: 'brick.png', box: 'box.png', box_used: 'box_used.png', block: 'block.png', pipe_top: 'pipe_top.png', pipe_body: 'pipe_body.png', coin: 'coin.png', enemy1: 'enemy1.png', flag: 'flag.png', goal: 'goal.png', bg_far: 'bg_far.jpg', bg_mid: 'bg_mid.png', item_grow: 'item_grow.png', item_weapon: 'item_weapon.png', shot: 'shot.png', item_life: 'item_life.png', item_star: 'item_star.png' };
   function loadImg(key, src) {
     return new Promise(res => { const i = new Image(); i.onload = () => { IMG[key] = i; res(); }; i.onerror = () => { IMG[key] = null; res(); }; i.src = src + '?v=' + Date.now(); });
   }
@@ -31,6 +31,7 @@
 
   // ---------- الصوت ----------
   let AC = null, muted = false; const music = new Audio(); music.loop = true; music.volume = 0.55;
+  const musicP = new Audio(); musicP.loop = true; musicP.volume = 0.6; let powerOk = false;
   function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } } return AC; }
   function beep(f0, f1, dur, type = 'square', vol = 0.12) {
     const a = ac(); if (!a || muted) return;
@@ -47,14 +48,25 @@
     grow: () => [392, 523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, f, 0.09), i * 60)), shrink: () => [784, 587, 440, 330].forEach((f, i) => setTimeout(() => beep(f, f, 0.1, 'triangle', 0.2), i * 70)),
     shoot: () => beep(900, 300, 0.1, 'square', 0.1), item: () => beep(200, 600, 0.35, 'triangle', 0.2)
   };
-  function playMusic(st) { music.src = `assets/${st.id}/music.mp3`; music.muted = muted; music.play().catch(() => { }); }
+  function playMusic(st) {
+    music.src = `assets/${st.id}/music.mp3`; music.muted = muted; music.playbackRate = 1; music.play().catch(() => { });
+    powerOk = false; musicP.oncanplaythrough = () => { powerOk = true; }; musicP.onerror = () => { powerOk = false; };
+    musicP.src = `assets/${st.id}/music_power.mp3`; musicP.muted = muted; musicP.load();
+  }
+  // موسيقى وقت الحماية: ملف music_power.mp3، وإذا مو موجود تتسرع موسيقى المرحلة
+  function starMusic(on) {
+    if (on) { if (powerOk) { music.pause(); musicP.currentTime = 0; musicP.play().catch(() => { }); } else music.playbackRate = 1.4; }
+    else { musicP.pause(); music.playbackRate = 1; if (G.hero && !G.hero.dead && G.hero.state === 'play') music.play().catch(() => { }); }
+  }
+  function pauseAll() { music.pause(); musicP.pause(); }
+  function resumeMusic() { if (G.hero && G.hero.star > 0 && powerOk) musicP.play().catch(() => { }); else music.play().catch(() => { }); }
 
   // ---------- الإدخال ----------
   const keys = {}; let pressed = {};
   addEventListener('keydown', e => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
     if (!keys[e.code]) pressed[e.code] = true; keys[e.code] = true; ac();
-    if (e.code === 'KeyM') { muted = !muted; music.muted = muted; }
+    if (e.code === 'KeyM') { muted = !muted; music.muted = muted; musicP.muted = muted; }
     if (e.code === 'F5') { e.preventDefault(); if (G.stage) loadStage(G.stage); }
     if (e.code === 'F2' && window.ibra) window.ibra.openAssets();
     if (e.code === 'F11' && window.ibra) { e.preventDefault(); window.ibra.toggleFullscreen(); }
@@ -83,7 +95,7 @@
   try { G.best = +localStorage.getItem('iwt_best') || 0; } catch (e) { G.best = 0; }
 
   const HH = [76, 124, 124];   // ارتفاع البطل: صغير، كبير، مسلح
-  const solid = ch => ch === '#' || ch === 'B' || ch === '?' || ch === 'M' || ch === 'U' || ch === 'S' || ch === 'P';
+  const solid = ch => ch === '#' || ch === 'B' || ch === '?' || ch === 'M' || ch === 'T' || ch === 'U' || ch === 'S' || ch === 'P';
   function cell(c, r) { if (r < 0) return '.'; if (r >= ROWS || c < 0 || c >= G.L.width) return c < 0 || c >= G.L.width ? 'S' : '.'; return G.L.grid[r][c]; }
 
   async function startStage(i, keep) {
@@ -97,7 +109,7 @@
     G.enemies = L.enemies.map(e => ({ x: e.c * T + 6, y: (e.row + 1) * T - 60, w: 60, h: 60, vx: -110, vy: 0, dead: 0, on: false }));
     G.coins = L.coins.map(c => ({ x: c.c * T + T / 2, y: c.row * T + T / 2, got: false }));
     G.fx = []; G.items = []; G.shots = []; G.time = G.stage.time; G.t = 0;
-    G.hero = { x: G.respawnCol * T, y: GROUND * T - HH[G.power], w: 44, h: HH[G.power], cool: 0, vx: 0, vy: 0, ground: false, face: 1, anim: 0, dead: 0, inv: 0, coyote: 0, buf: 0, state: 'play', slideT: 0 };
+    G.hero = { x: G.respawnCol * T, y: GROUND * T - HH[G.power], w: 44, h: HH[G.power], cool: 0, star: 0, vx: 0, vy: 0, ground: false, face: 1, anim: 0, dead: 0, inv: 0, coyote: 0, buf: 0, state: 'play', slideT: 0 };
     G.cam = Math.max(0, G.hero.x - VW * 0.4);
   }
 
@@ -126,14 +138,15 @@
     G.coins.forEach(k => { if (!k.got && Math.floor(k.x / T) === c && Math.floor(k.y / T) === r - 1) getCoin(k); });
     if (ch === 'M') {
       g[r][c] = 'U'; G.fx.push({ type: 'bounce', c, r, t: 0 }); SFX.item();
-      const type = G.power === 0 ? 'grow' : 'weapon';
-      G.items.push({ type, x: c * T + 6, y: r * T, w: 60, h: 60, vx: 0, vy: 0, rise: 0, r, dir: G.hero.face });
+      spawnItem(G.power === 0 ? 'grow' : 'weapon', c, r);
     }
+    else if (ch === 'T' || ch === 'H') { g[r][c] = 'U'; G.fx.push({ type: 'bounce', c, r, t: 0 }); SFX.item(); spawnItem(ch === 'T' ? 'star' : 'life', c, r); }
     else if (ch === '?') { g[r][c] = 'U'; G.fx.push({ type: 'pop', x: c * T + T / 2, y: r * T, t: 0 }); G.fx.push({ type: 'bounce', c, r, t: 0 }); addCoin(); G.score += 200; }
     else if (ch === 'B' && G.power === 0) { SFX.bump(); G.fx.push({ type: 'bounce', c, r, t: 0 }); }
     else if (ch === 'B') { breakBrick(c, r); }
     else SFX.bump();
   }
+  function spawnItem(type, c, r) { G.items.push({ type, x: c * T + 6, y: r * T, w: 60, h: 60, vx: 0, vy: 0, rise: 0, r, dir: G.hero.face || 1 }); }
   function breakBrick(c, r) {
     G.L.grid[r][c] = '.'; SFX.brk(); G.score += 50;
     for (let i = 0; i < 4; i++) G.fx.push({ type: 'shard', x: c * T + T / 2, y: r * T + T / 2, vx: (i % 2 ? 1 : -1) * (160 + i * 40), vy: -700 - (i > 1 ? 250 : 0), t: 0 });
@@ -153,11 +166,14 @@
   function stepItems(dt) {
     const h = G.hero;
     for (const it of G.items) {
-      if (it.rise < 1) { it.rise = Math.min(1, it.rise + dt * 2.2); it.y = it.r * T - it.h * it.rise - (it.rise >= 1 ? 0.5 : 0); if (it.rise >= 1 && it.type === 'grow') it.vx = 150 * it.dir; }
-      else { it.vy += 2600 * dt; moveBody(it, dt); if (it.hitWall) { it.dir = -it.dir; it.vx = 150 * it.dir; } if (it.y > VH + 200) it.gone = true; }
+      if (it.rise < 1) { it.rise = Math.min(1, it.rise + dt * 2.2); it.y = it.r * T - it.h * it.rise - (it.rise >= 1 ? 0.5 : 0); if (it.rise >= 1 && it.type !== 'weapon') { it.sp = it.type === 'star' ? 230 : 150; it.vx = it.sp * it.dir; } }
+      else { it.vy += 2600 * dt; moveBody(it, dt); if (it.hitWall) { it.dir = -it.dir; it.vx = (it.sp || 0) * it.dir; } if (it.type === 'star' && it.ground) it.vy = -780; if (it.y > VH + 200) it.gone = true; }
       if (!it.gone && it.rise > 0.5 && hit(h, it)) {
         it.gone = true; G.score += 1000; SFX.grow(); G.fx.push({ type: 'spark', x: it.x + 30, y: it.y + 30, t: 0 });
-        if (it.type === 'grow') { if (G.power < 1) setPower(1); } else setPower(2);
+        if (it.type === 'grow') { if (G.power < 1) setPower(1); }
+        else if (it.type === 'weapon') setPower(2);
+        else if (it.type === 'life') { G.lives++; SFX.life(); }
+        else if (it.type === 'star') { h.star = G.stage.starTime || 10; starMusic(true); }
       }
     }
     G.items = G.items.filter(i => !i.gone);
@@ -182,7 +198,7 @@
 
   function killHero() {
     const h = G.hero; if (h.dead || h.state !== 'play') return;
-    h.dead = 0.001; h.vy = -900; h.vx = 0; music.pause(); SFX.die(); G.lives--;
+    h.dead = 0.001; h.vy = -900; h.vx = 0; h.star = 0; pauseAll(); music.playbackRate = 1; SFX.die(); G.lives--;
   }
 
   function step(dt, I) {
@@ -215,6 +231,12 @@
     if (h.x < G.cam && h.vx < 0) { h.x = G.cam; h.vx = 0; }
     moveBody(h, dt, bump);
     h.anim += Math.abs(h.vx) * dt / 34; if (h.inv > 0) h.inv -= dt; if (h.cool > 0) h.cool -= dt;
+    if (h.star > 0) { h.star -= dt; if (h.star <= 0) { h.star = 0; starMusic(false); } }
+    // حجر مخفي: ما يبين إلا إذا انضرب بالراس من جوه
+    if (h.vy < 0) {
+      const hc = Math.floor((h.x + h.w / 2) / T), hr = Math.floor((h.y + h.vy * dt) / T);
+      if (cell(hc, hr) === 'H' && h.y >= (hr + 1) * T - 2) { h.y = (hr + 1) * T; h.vy = 0; bump(hc, hr); }
+    }
     if (I.fire) fire();
     stepItems(dt);
     if (h.y > VH + 200) { killHero(); return; }
@@ -229,14 +251,15 @@
       for (const o of G.enemies) if (o !== e && !o.dead && o.on && hit(e, o) && Math.sign(o.x - e.x) === Math.sign(e.vx)) e.vx = -e.vx;
       if (e.y > VH + 200) e.dead = 9;
       if (hit(h, e)) {
-        if (h.vy > 120 && h.y + h.h - e.y < 46) { e.dead = 0.01; h.vy = I.jump ? -900 : -560; G.score += 100; SFX.stomp(); G.fx.push({ type: 'spark', x: e.x + 30, y: e.y, t: 0 }); }
+        if (h.star > 0) { killEnemy(e); }
+        else if (h.vy > 120 && h.y + h.h - e.y < 46) { e.dead = 0.01; h.vy = I.jump ? -900 : -560; G.score += 100; SFX.stomp(); G.fx.push({ type: 'spark', x: e.x + 30, y: e.y, t: 0 }); }
         else if (h.inv <= 0) { if (hurt()) return; }
       }
     }
     // العلم
     if (h.x + h.w > G.L.flagCol * T + T / 2 - 8 && h.state === 'play') {
       h.state = 'slide'; h.x = G.L.flagCol * T + T / 2 - h.w - 2; h.vx = 0; h.vy = 0; h.slideT = 0;
-      const height = Math.max(0, GROUND * T - (h.y + h.h)); G.score += 100 + Math.round(height / T) * 400; music.pause(); SFX.win();
+      const height = Math.max(0, GROUND * T - (h.y + h.h)); G.score += 100 + Math.round(height / T) * 400; h.star = 0; pauseAll(); music.playbackRate = 1; SFX.win();
     }
     for (const f of G.fx) f.t += dt; G.fx = G.fx.filter(f => f.t < 0.9);
     const target = h.x - VW * 0.4; if (target > G.cam) G.cam += Math.min(target - G.cam, 900 * dt + (target - G.cam) * 0.12);
@@ -269,11 +292,11 @@
     const c0 = Math.max(0, Math.floor(cam / T) - 2), c1 = Math.min(L.width - 1, c0 + Math.ceil(VW / T) + 3);
     const bounce = {}; G.fx.forEach(f => { if (f.type === 'bounce' && f.t < 0.18) bounce[f.c + ',' + f.r] = -Math.sin(f.t / 0.18 * Math.PI) * 18; });
     for (let r = 0; r < ROWS; r++) for (let c = c0; c <= c1; c++) {
-      const ch = L.grid[r][c]; if (ch === '.' || ch === 'P') continue;
+      const ch = L.grid[r][c]; if (ch === '.' || ch === 'P' || ch === 'H') continue;
       const x = c * T, y = r * T + (bounce[c + ',' + r] || 0);
       if (ch === '#') img(r > 0 && L.grid[r - 1][c] === '#' ? 'ground_fill' : 'ground_top', x, y, T + 1, T + 1, '#8b5a2b');
       else if (ch === 'B') img('brick', x, y, T, T, '#c0392b');
-      else if (ch === '?' || ch === 'M') img('box', x, y, T, T, GOLD);
+      else if (ch === '?' || ch === 'M' || ch === 'T') img('box', x, y, T, T, GOLD);
       else if (ch === 'U') img('box_used', x, y, T, T, '#786046');
       else if (ch === 'S') img('block', x, y, T, T, '#968a7c');
     }
@@ -299,6 +322,7 @@
       let fr = 0; if (h.dead || !h.ground && h.state !== 'slide') fr = 4; else if (Math.abs(h.vx) > 20 || h.state === 'walk') fr = 1 + Math.floor(h.anim) % 3;
       const k = G.power ? 1.2 : 0.78, dw = 108 * k, dh = 144 * k;
       ctx.save(); ctx.translate(h.x + h.w / 2, h.y + h.h); ctx.scale(h.face, 1);
+      if (h.star > 0 && (h.star > 2.5 || Math.floor(G.t * 10) % 2)) { ctx.shadowColor = Math.floor(G.t * 12) % 2 ? '#fff3a0' : GOLD; ctx.shadowBlur = 46; ctx.filter = 'brightness(1.35) saturate(1.3)'; }
       img('hero', -dw / 2 - 6 * k, -dh + 10 * k, dw, dh, '#111', fr * 192, 0, 192, 256);
       if (G.power === 2 && !h.dead) img('item_weapon', 6, -h.h * 0.52, 46, 46, GOLD);
       ctx.restore();
@@ -306,9 +330,10 @@
     // الجوائز والمقذوفات
     for (const it of G.items) {
       ctx.save(); ctx.beginPath(); ctx.rect(it.x - 20, it.r * T - 200, 110, it.rise < 1 ? 200 : 2000); ctx.clip();
-      img(it.type === 'grow' ? 'item_grow' : 'item_weapon', it.x - 6, it.y - 12, 72, 72, it.type === 'grow' ? '#e33' : GOLD); ctx.restore();
+      img('item_' + it.type, it.x - 6, it.y - 12, 72, 72, it.type === 'grow' || it.type === 'life' ? '#e33' : GOLD); ctx.restore();
     }
     for (const sh of G.shots) { ctx.save(); ctx.translate(sh.x + 14, sh.y + 14); ctx.rotate(sh.t * 14 * Math.sign(sh.vx)); img('shot', -20, -20, 40, 40, '#fff'); ctx.restore(); }
+    if (G.hero.star > 0) { const hh = G.hero; ctx.fillStyle = '#fff3a0'; for (let i = 0; i < 5; i++) { const a = G.t * 5 + i * 1.256, rr = 62 + Math.sin(G.t * 9 + i) * 10; ctx.fillRect(hh.x + hh.w / 2 + Math.cos(a) * rr - 5, hh.y + hh.h / 2 + Math.sin(a) * rr * 1.2 - 5, 10, 10); } }
     // مؤثرات
     for (const f of G.fx) {
       if (f.type === 'pop') { const y = f.y - 40 - Math.sin(Math.min(1, f.t / 0.45) * Math.PI) * 150; if (f.t < 0.45) img('coin', f.x - 30, y - 30, 60, 60, GOLD, (Math.floor(f.t * 30) % 4) * 128, 0, 128, 128); }
@@ -325,6 +350,7 @@
     text('♥ ' + G.lives, 470, 46, 38, '#ff6b6b', 'left');
     if (G.power >= 1) img('item_grow', 600, 18, 56, 56, '#e33');
     if (G.power >= 2) { img('item_weapon', 664, 18, 56, 56, GOLD); text('Z', 740, 48, 30, GOLD, 'left'); }
+    if (G.hero.star > 0) { img('item_star', 780, 20, 52, 52, GOLD); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(776, 80, 60, 10); ctx.fillStyle = GOLD; ctx.fillRect(776, 80, 60 * G.hero.star / (G.stage.starTime || 10), 10); }
     text('الوقت  ' + Math.ceil(G.time), 50, 46, 36, G.time < 60 ? '#ff6b6b' : '#fff', 'left');
   }
   function panel(title, lines, hint) {
@@ -359,12 +385,12 @@
     if (G.mode === 'title') { title(); const pick = I.digit ? I.digit - 1 : -1; if (pick >= 0) startStage(pick); else if (I.start) startStage(0); }
     else if (G.mode === 'loading') { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, VW, VH); text('جاري التحميل...', VW / 2, VH / 2, 56, GOLD); }
     else if (G.mode === 'play') {
-      if (I.pause && !G.hero.dead) { G.mode = 'pause'; music.pause(); }
+      if (I.pause && !G.hero.dead) { G.mode = 'pause'; pauseAll(); }
       accT += d; let first = true;
       while (accT >= DT) { step(DT, first ? I : Object.assign({}, I, { jumpP: false })); first = false; accT -= DT; if (G.mode !== 'play') break; }
       drawWorld(); hud();
     }
-    else if (G.mode === 'pause') { drawWorld(); hud(); panel('توقف مؤقت', ['P أو Esc للرجوع للعب', 'F5 يعيد تحميل التصاميم   •   F2 يفتح مجلد التصاميم'], 'اضغط P للمتابعة'); if (I.pause) { G.mode = 'play'; music.play().catch(() => { }); } }
+    else if (G.mode === 'pause') { drawWorld(); hud(); panel('توقف مؤقت', ['P أو Esc للرجوع للعب', 'F5 يعيد تحميل التصاميم   •   F2 يفتح مجلد التصاميم'], 'اضغط P للمتابعة'); if (I.pause) { G.mode = 'play'; resumeMusic(); } }
     else if (G.mode === 'clear') {
       const nx = STAGES[G.stageIndex + 1];
       drawWorld(); hud(); panel('أحسنت! خلصت المرحلة', ['النقاط: ' + G.score + '     العملات: ' + G.coinsN, 'المحطة الجاية: ' + (nx ? nx.name : G.stage.next + ' (قيد التصميم)')], nx ? 'اضغط Enter للسفر للمحطة الجاية' : 'اضغط Enter للرجوع للقائمة');

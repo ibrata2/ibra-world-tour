@@ -19,6 +19,8 @@ rows = [([S+'ground_top.png'], 'سطح الأرضية (الوجه اللي يم�
  ([S+'item_grow.png'], 'جائزة التكبير اللي تطلع من الصندوق وتكبّر البطل'),
  ([S+'item_weapon.png'], 'جائزة السلاح (تطلع من الصندوق إذا البطل كبير) وتظهر بإيده وبأعلى الشاشة'),
  ([S+'shot.png'], 'المقذوف اللي يرميه البطل (يدور وهو طاير)'),
+ ([S+'item_star.png'], 'جائزة الحماية: البطل ما يتأذى واللي يلمسه من الأعداء يموت، لوقت محدد'),
+ ([S+'item_life.png'], 'الروح الإضافية اللي تطلع من الحجر السري المخفي'),
  ([S+'flag.png'], 'عمود العلم بنهاية المرحلة، العمود بالنص'),
  ([S+'goal.png'], 'مبنى النهاية اللي يدخله البطل، الباب بالنص من جوه'),
  ([S+'bg_far.jpg'], 'الخلفية البعيدة، تتحرك ببطء. الحافة اليمنى لازم تكمل اليسرى'),
@@ -34,7 +36,8 @@ th{color:#d4af37}td.f{font-family:monospace;direction:ltr;text-align:left;color:
 for files, desc in rows:
     w, hh = Image.open(os.path.join(K, files[0])).size
     h += f'<tr><td class="f">{"<br>".join(files)}</td><td class="s">العرض {w} × الارتفاع {hh}</td><td>{desc}</td><td class="i">' + ' '.join(f'<img src="{kit}/{f}">' for f in files) + '</td></tr>'
-h += f'''<tr><td class="f">{S}music.mp3</td><td class="s">حوالي 30 ثانية، تتكرر</td><td>موسيقى المرحلة. عدلها أو بدلها بأي طول، بس خلي نهايتها تركب على بدايتها</td><td class="i">♪</td></tr></table>
+h += f'''<tr><td class="f">{S}music.mp3</td><td class="s">حوالي 30 ثانية، تتكرر</td><td>موسيقى المرحلة. عدلها أو بدلها بأي طول، بس خلي نهايتها تركب على بدايتها</td><td class="i">♪</td></tr>
+<tr><td class="f">{S}music_power.mp3</td><td class="s">أي طول، تتكرر</td><td>موسيقى وقت الحماية، تشتغل بدل موسيقى المرحلة لحد ما يخلص الوقت. إذا حذفتها اللعبة تسرّع موسيقى المرحلة بدالها</td><td class="i">♪</td></tr></table>
 <ul><li>تريد دقة أعلى؟ تكدر تصمم بضعف القياس بشرط تبقى نفس النسبة.</li><li>داخل اللعبة: F2 يفتح مجلد التصاميم، و F5 يعيد تحميلها فوراً.</li></ul></html>'''
 open(os.path.join(out, 'guide.html'), 'w', encoding='utf8').write(h)
 js = "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1600,height:900}});await p.goto('file://'+process.cwd()+'/guide.html');await p.waitForTimeout(500);await p.screenshot({path:'%s/دليل_التصميم.png',fullPage:true});await b.close()})()" % kit

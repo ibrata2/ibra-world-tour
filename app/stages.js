@@ -12,6 +12,8 @@
       brick(c, row, n = 1) { for (let i = 0; i < n; i++) g[row][c + i] = 'B'; },
       box(c, row) { g[row][c] = '?'; },
       power(c, row) { g[row][c] = 'M'; },
+      star(c, row) { g[row][c] = 'T'; },      // صندوق الحماية
+      secret(c, row) { g[row][c] = 'H'; },    // حجر مخفي بيه روح إضافية
       block(c, row) { g[row][c] = 'S'; },
       stairUp(c, n) { for (let i = 0; i < n; i++) for (let h = 0; h <= i; h++) g[GROUND - 1 - h][c + i] = 'S'; },
       stairDown(c, n) { for (let i = 0; i < n; i++) for (let h = 0; h < n - i; h++) g[GROUND - 1 - h][c + i] = 'S'; },
@@ -44,14 +46,14 @@
         a.brick(35, 9, 6); a.box(37, 9); a.power(37, 5); a.box(38, 5);
         a.enemy(42); a.enemy(44.5);
         a.gap(48, 49); a.coinArc(47, 9);
-        a.pipe(54, 3); a.enemy(58); a.pipe(62, 2);
+        a.pipe(54, 3); a.enemy(58); a.pipe(62, 2); a.secret(65, 9); a.coin(65, 11);
         a.stairUp(68, 4); a.gap(72, 74); a.stairDown(75, 4); a.coinArc(71.5, 7);
         a.brick(82, 9, 8); a.box(84, 9); a.power(87, 9); a.enemy(85); a.enemy(91);
         a.brick(94, 5, 6); a.coin(94, 4, 6);
         a.checkpoint(100);
         a.pipe(104, 4); a.enemy(109); a.enemy(111);
         a.gap(114, 115); a.coinArc(113, 9);
-        a.box(120, 9); a.box(123, 9); a.box(126, 9); a.power(123, 5);
+        a.star(120, 9); a.box(123, 9); a.box(126, 9); a.power(123, 5);
         a.enemy(128); a.enemy(130); a.enemy(132);
         a.pipe(138, 2); a.pipe(144, 3); a.coin(140, 11, 3);
         a.brick(150, 9, 4); a.box(154, 9); a.enemy(152, 8);
@@ -77,8 +79,8 @@
         a.pipe(59, 3); a.enemy(63); a.enemy(65);
         a.gap(68, 71); a.coinArc(68, 9);
         a.stairUp(74, 3); a.column(77, 3); a.gap(78, 80); a.stairDown(81, 3); a.coinArc(77.5, 7);
-        a.box(87, 9); a.brick(88, 9, 2); a.box(90, 9); a.enemy(89); a.enemy(92); a.enemy(94);
-        a.pipe(97, 4); a.pipe(102, 2);
+        a.box(87, 9); a.brick(88, 9, 2); a.star(90, 9); a.enemy(89); a.enemy(92); a.enemy(94);
+        a.pipe(97, 4); a.pipe(102, 2); a.secret(100, 9); a.coin(100, 11);
         a.checkpoint(106);
         a.brick(108, 9, 3); a.brick(113, 6, 3); a.brick(118, 9, 3); a.coin(113, 5, 3); a.power(114, 2);
         a.enemy(112); a.enemy(116); a.enemy(120);

@@ -34,3 +34,23 @@ save(im, out(2, 'item_weapon.png'), 128, 128)
 im, d = canvas(128, 128)
 P(d, [(22, 70), (36, 30), (76, 16), (108, 44), (104, 88), (68, 112), (32, 100)], (96, 88, 80)); P(d, [(30, 68), (42, 36), (76, 24), (98, 46), (70, 60)], (150, 142, 130)); E(d, 48, 36, 22, 12, (196, 190, 180))
 save(im, out(2, 'shot.png'), 128, 128)
+# ---- extra life (both stages) and protection charm ----
+def heart(n):
+    im, d = canvas(128, 128)
+    for col, o in (((120, 16, 24), 0), ((226, 40, 52), 5)):
+        E(d, 12+o, 16+o, 58-2*o, 58-2*o, col); E(d, 58+o, 16+o, 58-2*o, 58-2*o, col); P(d, [(14+o, 56), (114-o, 56), (64, 116-o)], col)
+    E(d, 28, 30, 20, 16, (255, 170, 170)); P(d, [(64, 44), (70, 60), (86, 60), (73, 70), (78, 86), (64, 76), (50, 86), (55, 70), (42, 60), (58, 60)], g.GOLD)
+    save(im, out(n, 'item_life.png'), 128, 128)
+heart(1); heart(2)
+im, d = canvas(128, 128)   # stage 1: gold star
+pts = [(64 + (56 if i % 2 == 0 else 24)*math.cos(-math.pi/2 + i*math.pi/5), 66 + (56 if i % 2 == 0 else 24)*math.sin(-math.pi/2 + i*math.pi/5)) for i in range(10)]
+P(d, [(x, y+4) for x, y in pts], g.GOLD_D); P(d, pts, g.GOLD); P(d, [(64 + (x-64)*0.6, 66 + (y-66)*0.6) for x, y in pts], g.GOLD_L)
+E(d, 50, 56, 8, 14, (30, 30, 30)); E(d, 70, 56, 8, 14, (30, 30, 30))
+save(im, out(1, 'item_star.png'), 128, 128)
+im, d = canvas(128, 128)   # stage 2: "um sabaa oyoun" seven-eyes blue charm
+R(d, 60, 0, 8, 22, g.GOLD, 3); E(d, 10, 16, 108, 108, (14, 60, 130)); E(d, 14, 20, 100, 100, (30, 110, 200)); E(d, 22, 26, 40, 30, (110, 180, 240))
+for i in range(7):
+    if i < 6: a = i*math.pi/3; cx, cy = 64 + 30*math.cos(a), 70 + 30*math.sin(a)
+    else: cx, cy = 64, 70
+    E(d, cx-11, cy-11, 22, 22, (255, 255, 255)); E(d, cx-6, cy-6, 12, 12, (14, 40, 90))
+save(im, out(2, 'item_star.png'), 128, 128)
