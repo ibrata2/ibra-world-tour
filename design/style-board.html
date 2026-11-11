@@ -1,0 +1,190 @@
+<title>IBRA World Tour</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: رحلة طيران — كل مرحلة بطاقة صعود (boarding pass) بترتيب خط الرحلة، مشهد بكسل + البطل بلبس المدينة */
+:root{
+  color-scheme:dark;
+  --bg:#12100c; --panel:#1c1913; --panel2:#25211a; --line:#3a3427;
+  --fg:#f1e9d6; --muted:#a89d85; --gold:#d4af37; --gold2:#8f7524;
+  --display:"Lalezar","Tajawal",Tahoma,sans-serif;
+  --body:"Tajawal",Tahoma,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",Consolas,monospace;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.7}
+.wrap{max-width:1040px;margin-inline:auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+header h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,7vw,60px);line-height:1.1;margin:0;color:var(--gold);letter-spacing:.5px}
+header p{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.route{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--mono);font-size:13px;direction:ltr;justify-content:flex-end}
+.route span{border:1px solid var(--line);padding:3px 9px;border-radius:3px;color:var(--fg)}
+.route i{color:var(--gold2);font-style:normal}
+.pass{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:baseline;padding:14px 18px;border-bottom:1px dashed var(--line)}
+.top .no{font-family:var(--mono);color:var(--gold);font-size:13px;direction:ltr}
+.top h2{font-family:var(--display);font-weight:400;font-size:28px;margin:0;line-height:1.2}
+.top .city{color:var(--muted)}
+.top .code{margin-inline-start:auto;font-family:var(--mono);direction:ltr;color:var(--gold);font-size:15px;letter-spacing:1px}
+canvas{image-rendering:pixelated;display:block}
+.scene{width:100%;height:auto;aspect-ratio:3/1;border-bottom:1px solid var(--line)}
+.body{display:grid;grid-template-columns:150px 1fr;gap:18px;padding:18px}
+.heroBox{background:var(--panel2);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;align-self:start}
+.heroBox canvas{width:112px;height:168px}
+.heroBox b{font-size:13px;color:var(--gold);text-align:center;font-weight:700}
+dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;min-width:0}
+dt{color:var(--gold);font-weight:700;white-space:nowrap}
+dd{margin:0;min-width:0}
+.sw{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;grid-column:1/-1}
+.sw i{width:34px;height:20px;border-radius:3px;border:1px solid #0006}
+.ask{border:1px solid var(--gold2);border-radius:10px;padding:16px 18px;background:var(--panel)}
+.ask h3{font-family:var(--display);font-weight:400;color:var(--gold);font-size:24px;margin:0 0 6px}
+.ask ol{margin:0;padding-inline-start:22px}
+@media(max-width:560px){.body{grid-template-columns:1fr}.heroBox{flex-direction:row;justify-content:center}dl{grid-template-columns:1fr}dt{margin-top:6px}}
+</style>
+<div class="wrap" dir="rtl" lang="ar">
+<header>
+  <h1>IBRA World Tour</h1>
+  <p>لوحة الستايل: ترتيب المدن، شكل كل مرحلة، ولبس البطل بيها. الرسومات هنا مسودة بكسل حتى نتفق على الاتجاه، وبعدها أسلمك القوالب وتصممها بإيدك.</p>
+</header>
+<div class="route" id="route"></div>
+<div id="list" style="display:flex;flex-direction:column;gap:28px"></div>
+<div class="ask">
+  <h3>شنو أحتاج منك هسه</h3>
+  <ol>
+    <li>الترتيب: خليت نيويورك آخر مرحلة لأن البطل يعبر المحيط بالنهاية. إذا تريد ترتيب ثاني كلي.</li>
+    <li>البطل: ملامحه ثابتة (لحية وبشرة) وبس اللبس يتغير. تريده يشبهك أكثر؟ دزلي وصف أو صورة.</li>
+    <li>أي لبس ما عاجبك أو تريد تبدله، كلي رقم المرحلة وشنو تريد.</li>
+  </ol>
+</div>
+</div>
+<script>
+const SKIN='#d9a066',BEARD='#2b1d14';
+function mk(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
+function hero(ctx,ox,oy,o){
+  const p=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(ox+x,oy+y,w,h)};
+  p(5,4,7,6,SKIN);p(12,7,1,1,SKIN);p(9,6,1,2,'#111');p(5,6,1,3,BEARD);p(5,9,7,2,BEARD);p(10,8,2,1,BEARD);
+  p(4,11,8,7,o.top);p(3,12,1,4,o.sleeve||o.top);p(12,12,1,4,o.sleeve||o.top);p(3,16,1,1,SKIN);p(12,16,1,1,SKIN);
+  if(o.long)p(4,18,8,4,o.top);else{p(4,18,3,4,o.legs);p(9,18,3,4,o.legs)}
+  p(3,22,4,2,o.shoes);p(9,22,4,2,o.shoes);
+  o.extra(p);
+}
+const G='#d4af37';
+const STAGES=[
+{no:'01',code:'START',name:'شارع البداية',city:'المرحلة الكلاسيكية',
+ arch:'سما زرقة صافية، تلال خضرة، غيوم، طابوق أحمر وصناديق ذهبية',ground:'تراب بني وفوكه حشيش أخضر',
+ enemy:'قنفذ يمشي، ضفدع ينط، نبتة تطلع من الأنبوب',music:'لحن مرح سريع 8-bit، تدريب على اللعب',
+ outfit:'اللبس الأساسي: كاب أسود بشعار ذهبي، تيشيرت أسود بخط ذهبي، جينز',
+ pal:['#6ec3ff','#4caf50','#8b5a2b','#c0392b','#d4af37'],
+ o:{top:'#1a1a1a',legs:'#2f4a7a',shoes:'#eee',extra:p=>{p(5,2,7,2,'#1a1a1a');p(10,4,4,1,'#1a1a1a');p(8,2,1,1,G);p(4,14,8,1,G)}},
+ sc:s=>{s.sky(['#6ec3ff','#8fd3ff','#b5e3ff']);s.cloud(60,20);s.cloud(250,34);s.hill(120,96,40,'#3d9a48');s.hill(300,96,28,'#4caf50');
+  s.ground({base:'#8b5a2b',top:'#4caf50',line:'#6b4420'});s.blocks('#c0392b','#7d2318')}},
+{no:'02',code:'BGW',name:'بغداد زمن الوالي',city:'بغداد، العراق',
+ arch:'شناشيل خشب مطلة على الدرب، قباب فيروزية ومنارة، برج ساعة القشلة، نخيل ودجلة',ground:'طابوق فرشي أصفر (آجر بغدادي) بنقشة متعاكسة',
+ enemy:'عقرب، جرة فخار تتدحرج، طير يرمي تمر',music:'مقام عراقي: عود وجوزة وسنطور بإيقاع الجورجينة',
+ outfit:'جراوية بغدادية عالراس، زبون مخطط طويل، حزام عريض، يمني جلد',
+ pal:['#f4c97a','#d9a441','#1fa3a3','#7a4a22','#2e6b3a'],
+ o:{top:'#e9dcc0',long:1,shoes:'#7a3b1d',extra:p=>{p(4,1,9,3,'#f3efe6');p(5,2,7,1,'#333');p(3,3,1,3,'#f3efe6');p(6,11,1,11,'#8b5a2b');p(9,11,1,11,'#8b5a2b');p(4,16,8,2,'#8a1f1f');p(7,16,2,2,G)}},
+ sc:s=>{s.sky(['#f6b25e','#f8c97d','#fbe0a8']);s.sun(320,26,'#fff3c4');
+  s.box(20,56,46,40,'#b98545');s.box(16,62,54,10,'#7a4a22');s.win(22,64,42,6,'#f8c97d',6);s.box(34,80,10,16,'#5a3515');
+  s.dome(130,60,20,'#1fa3a3');s.box(110,60,40,36,'#c99a55');s.box(170,26,8,70,'#c99a55');s.dome(174,26,5,'#1fa3a3');s.box(168,44,12,3,'#7a4a22');
+  s.box(230,34,18,62,'#b98545');s.box(226,30,26,5,'#7a4a22');s.box(234,40,10,10,'#fff3c4');s.box(238,42,1,4,'#333');
+  s.palm(290,96);s.palm(350,96);s.palm(92,96);
+  s.ground({base:'#d9a441',top:'#f4c97a',line:'#a9772a'});s.blocks('#c99a55','#7a4a22')}},
+{no:'03',code:'CAI',name:'ليالي خان الخليلي',city:'القاهرة، مصر',
+ arch:'مشربيات خشب، مآذن مملوكية، فوانيس نحاس، والأهرامات بالأفق',ground:'بلاط حجر جيري رملي',
+ enemy:'قطة شوارع سريعة، خنفسة جعران، فانوس يتأرجح',music:'عود وقانون وطبلة بإيقاع مقسوم',
+ outfit:'جلابية بلدي واسعة، طربوش أحمر، شال أبيض عالكتف',
+ pal:['#2b2a5a','#e8c27a','#c98d3b','#7b3f1d','#ffb84a'],
+ o:{top:'#8fa8b8',long:1,shoes:'#5a3515',extra:p=>{p(6,0,5,4,'#b3261e');p(11,0,1,3,'#111');p(8,11,1,4,'#5f7a8a');p(4,10,8,1,'#f3efe6');p(4,11,1,5,'#f3efe6')}},
+ sc:s=>{s.sky(['#2b2a5a','#4a3a72','#8a5a7a']);s.stars();s.sun(60,22,'#fdf5d0');
+  s.tri(300,96,54,'#c98d3b');s.tri(350,96,36,'#b17a30');
+  s.box(100,40,8,56,'#e8c27a');s.box(98,52,12,3,'#7b3f1d');s.dome(104,40,5,'#e8c27a');
+  s.box(130,50,60,46,'#a8763a');s.box(126,58,30,14,'#7b3f1d');s.win(128,60,26,10,'#ffb84a',4);s.box(166,58,18,14,'#7b3f1d');s.win(168,60,14,10,'#ffb84a',4);
+  s.box(210,60,40,36,'#8f6230');s.box(222,74,14,22,'#3a2412');s.box(204,56,4,6,'#ffb84a');
+  s.ground({base:'#e8c27a',top:'#f5dca0',line:'#b9924a'});s.blocks('#c98d3b','#7b3f1d')}},
+{no:'04',code:'SVO',name:'ثلوج الكرملين',city:'موسكو، روسيا',
+ arch:'قباب بصلية ملونة، سور طابوق أحمر بشرفات، برج بنجمة، ثلج وأشجار صنوبر',ground:'حجر مرصوف رمادي مغطى بطبقة ثلج (الأرض تزلق شوية)',
+ enemy:'دب صغير، رجل ثلج يرمي كرات، غراب',music:'بالالايكا وأكورديون، يبدي هادئ ويتسارع',
+ outfit:'أوشانكا فرو، معطف شتوي طويل بياقة فرو، جزمة سودة',
+ pal:['#9fb8d6','#ffffff','#a3261c','#2f7d4f','#e8b020'],
+ o:{top:'#3b4a66',legs:'#22283a',shoes:'#111',extra:p=>{p(4,1,9,3,'#6b4a2e');p(4,3,9,1,'#a88660');p(4,4,2,4,'#6b4a2e');p(4,18,8,2,'#3b4a66');p(4,10,8,1,'#a88660');p(8,12,1,1,G);p(8,15,1,1,G);p(3,20,4,2,'#111');p(9,20,4,2,'#111')}},
+ sc:s=>{s.sky(['#7f9cc0','#9fb8d6','#c9d9ea']);
+  s.box(0,66,384,30,'#a3261c');for(let x=0;x<384;x+=12){s.box(x,60,7,6,'#a3261c')}
+  s.box(60,24,22,72,'#8f2018');s.tri(71,24,16,'#2f7d4f');s.box(70,4,2,5,'#e8b020');s.box(66,36,10,10,'#f3efe6');
+  s.box(200,48,16,48,'#f3efe6');s.onion(208,48,11,'#e8b020');s.box(228,56,14,40,'#f3efe6');s.onion(235,56,8,'#2f7d4f');s.box(178,58,14,38,'#f3efe6');s.onion(185,58,8,'#3a6bc0');
+  s.pine(310,96);s.pine(340,96);s.snow();
+  s.ground({base:'#7c8590',top:'#ffffff',line:'#5b636d'});s.blocks('#a3261c','#5e130d')}},
+{no:'05',code:'DEL',name:'قلاع دلهي الحمراء',city:'دلهي، الهند',
+ arch:'سور القلعة الحمراء، أقواس مغولية مفصصة، قباب بيضة وجهاتري (مظلات حجر)',ground:'حجر رملي أحمر مع شريط رخام أبيض منقوش',
+ enemy:'قرد يخطف العملات، طاووس، كوبرا تطلع من سلة',music:'سيتار وطبلة هندية وبانسوري (ناي)',
+ outfit:'كورتا طويلة للركبة، باغري (عمامة راجستانية) برتقالي، وشاح مايل',
+ pal:['#f7a8b8','#b5432e','#f3efe6','#e07b1a','#2a8f7a'],
+ o:{top:'#f3e6c8',legs:'#f3efe6',shoes:'#8a5a1d',extra:p=>{p(4,1,9,3,'#e07b1a');p(6,0,5,1,'#e07b1a');p(4,2,9,1,'#b85c0c');p(9,1,1,1,G);p(4,18,8,2,'#f3e6c8');p(10,11,2,2,'#2a8f7a');p(8,13,2,2,'#2a8f7a');p(6,15,2,2,'#2a8f7a');p(4,17,2,2,'#2a8f7a')}},
+ sc:s=>{s.sky(['#f48aa0','#f7a8b8','#fbd0c0']);s.sun(190,40,'#fff0d8');
+  s.box(0,62,384,34,'#b5432e');for(let x=4;x<384;x+=10){s.dome(x+3,62,3,'#b5432e')}
+  s.box(150,34,84,62,'#a33a27');s.arch(192,96,18,34,'#4a160e');s.box(150,30,84,4,'#f3efe6');
+  for(const x of[158,192,226]){s.box(x-5,22,10,8,'#a33a27');s.dome(x,22,6,'#f3efe6')}
+  s.box(60,50,10,46,'#a33a27');s.dome(65,50,7,'#f3efe6');s.box(310,50,10,46,'#a33a27');s.dome(315,50,7,'#f3efe6');
+  s.ground({base:'#b5432e',top:'#f3efe6',line:'#7d2a1b'});s.blocks('#e07b1a','#8a4208')}},
+{no:'06',code:'PEK',name:'سور الصين العظيم',city:'بكين، الصين',
+ arch:'السور العظيم فوك الجبال، باغودات بسقوف منحنية، بوابات حمرة، فوانيس وخيزران',ground:'حجر رمادي مزرق مثل ممشى السور',
+ enemy:'باندا يتدحرج، تنين ورق يطير، ألعاب نارية',music:'سلم خماسي: إرهو وغوجنغ وطبول',
+ outfit:'بدلة تانغ حمرة بأزرار قماش ذهبية، قبعة خيزران مخروطية، حذاء قماش أسود',
+ pal:['#bfe3d6','#c8102e','#2f6f5e','#7f8fa0','#f2c230'],
+ o:{top:'#c8102e',legs:'#151515',shoes:'#111',extra:p=>{p(7,0,2,1,'#d9b86a');p(5,1,6,1,'#d9b86a');p(3,2,10,1,'#c9a552');p(2,3,12,1,'#b8923f');p(8,11,1,7,'#8f0a20');p(7,12,3,1,G);p(7,14,3,1,G);p(7,16,3,1,G);p(3,23,4,1,'#eee');p(9,23,4,1,'#eee')}},
+ sc:s=>{s.sky(['#9fd0c4','#bfe3d6','#e3f3e6']);s.hill(90,96,60,'#5f9a86');s.hill(260,96,70,'#4b8572');s.hill(360,96,40,'#5f9a86');
+  for(let x=40;x<150;x+=8){const y=96-Math.round(Math.sqrt(Math.max(0,3600-(x-90)**2)))-4;s.box(x,y,8,5,'#7f8fa0');s.box(x,y-2,3,2,'#7f8fa0')}
+  s.box(84,26,12,10,'#7f8fa0');
+  for(let i=0;i<4;i++){const w=44-i*8,y=84-i*16;s.box(260-w/2+6,y-10,w-12,10,'#c8102e');s.box(260-w/2,y-13,w,4,'#2f6f5e');s.box(260-w/2-2,y-14,3,2,'#2f6f5e');s.box(260+w/2-1,y-14,3,2,'#2f6f5e')}
+  s.box(259,12,2,10,'#f2c230');s.box(245,84,30,12,'#8f0a20');
+  for(const x of[180,200,320]){s.box(x,40,1,6,'#333');s.box(x-2,46,5,6,'#c8102e');s.box(x-1,52,3,1,'#f2c230')}
+  s.ground({base:'#7f8fa0',top:'#aab6c2',line:'#5a6878'});s.blocks('#c8102e','#7a0a1c')}},
+{no:'07',code:'JFK',name:'ناطحات نيويورك',city:'نيويورك، أمريكا',
+ arch:'ناطحات سحاب بشبابيك مضوية، خزانات مي عالسطوح، سلالم حريق حديد، لوحات نيون',ground:'أسفلت وخط أصفر، ورصيف كونكريت',
+ enemy:'حمامة، جرذ المترو، تاكسي أصفر مسرع (المرحلة الأخيرة والأصعب)',music:'جاز وسوينغ: ساكسفون وكونترباص ودرامز',
+ outfit:'كاب مقلوب، جاكيت بومبر بخطوط عالكم، تيشيرت أبيض، سنيكرز',
+ pal:['#1c2340','#f2b632','#3a4466','#e04e39','#8fd3ff'],
+ o:{top:'#f3efe6',sleeve:'#1f3a6e',legs:'#30343f',shoes:'#f3f3f3',extra:p=>{p(5,2,7,2,'#e04e39');p(2,3,3,1,'#e04e39');p(4,11,2,7,'#1f3a6e');p(10,11,2,7,'#1f3a6e');p(3,13,1,1,'#fff');p(12,13,1,1,'#fff');p(4,17,8,1,'#f2b632');p(3,23,4,1,'#e04e39');p(9,23,4,1,'#e04e39')}},
+ sc:s=>{s.sky(['#1c2340','#3a3560','#b0577a']);s.stars();
+  const B=[[10,40,34],[50,24,28],[84,50,30],[120,14,26],[152,44,36],[196,30,24],[226,54,40],[272,20,30],[308,46,32],[346,34,38]];
+  B.forEach(([x,y,w],i)=>{s.box(x,y,w,96-y,i%2?'#2a3252':'#3a4466');s.win(x+3,y+4,w-6,90-y,i%3?'#f2b632':'#8fd3ff',5)});
+  s.box(132,4,2,10,'#3a4466');s.box(90,42,10,8,'#5a3d28');s.tri(95,42,4,'#5a3d28');s.box(236,46,10,8,'#5a3d28');
+  s.ground({base:'#3b3f48',top:'#9aa0a8',line:'#f2b632',road:1});s.blocks('#e04e39','#8a2414')}}
+];
+function scene(st){
+  const c=mk(384,128),x=c.getContext('2d');c.className='scene';
+  const s={
+    box:(a,b,w,h,col)=>{x.fillStyle=col;x.fillRect(a,b,w,h)},
+    sky:cs=>cs.forEach((col,i)=>s.box(0,i*32,384,32,col)),
+    sun:(a,b,col)=>{for(let i=-9;i<=9;i++){const w=Math.round(Math.sqrt(81-i*i));s.box(a-w,b+i,w*2,1,col)}},
+    cloud:(a,b)=>{s.box(a,b,30,8,'#fff');s.box(a+6,b-5,18,5,'#fff')},
+    stars:()=>{for(let i=0;i<40;i++)s.box((i*97)%384,(i*53)%60,1,1,'#fff')},
+    snow:()=>{for(let i=0;i<60;i++)s.box((i*71)%384,(i*37)%96,1,1,'#fff')},
+    hill:(a,base,r,col)=>s.dome(a,base,r,col),
+    dome:(a,base,r,col)=>{for(let i=0;i<=r;i++){const w=Math.round(Math.sqrt(r*r-i*i));s.box(a-w,base-i,w*2,1,col)}},
+    onion:(a,base,r,col)=>{for(let i=-r;i<=r;i++){let w=Math.round(Math.sqrt(r*r-i*i));if(i<-r*0.5)w=Math.max(w,Math.round(r*0.55));s.box(a-w,base-r-i-1,w*2,1,col)}for(let i=0;i<6;i++)s.box(a-Math.ceil((6-i)/3),base-2*r-1-i,Math.ceil((6-i)/3)*2,1,col);s.box(a,base-2*r-10,1,4,'#e8b020')},
+    tri:(a,base,h,col)=>{for(let i=0;i<h;i++)s.box(a-i,base-h+i,i*2+1,1,col)},
+    arch:(a,base,w,h,col)=>{s.box(a-w,base-h+w,w*2,h-w,col);s.dome(a,base-h+w,w,col)},
+    palm:(a,base)=>{s.box(a,base-26,2,26,'#7a4a22');[[-9,-28,9,2],[2,-28,9,2],[-7,-31,6,2],[3,-31,6,2],[-11,-26,4,3],[9,-26,4,3]].forEach(([dx,dy,w,h])=>s.box(a+dx,base+dy,w,h,'#2e6b3a'))},
+    pine:(a,base)=>{s.box(a,base-6,2,6,'#5a3d28');s.tri(a,base-6,12,'#2f7d4f');s.tri(a,base-14,9,'#2f7d4f');s.box(a-2,base-24,5,1,'#fff')},
+    win:(a,b,w,h,col,step)=>{for(let i=a;i<a+w-1;i+=step)for(let j=b;j<b+h-1;j+=step)if((i*7+j*3)%5)s.box(i,j,2,2,col)},
+    ground:t=>{for(let gx=0;gx<384;gx+=16)for(let gy=96;gy<128;gy+=16){s.box(gx,gy,16,16,t.base);if(gy==96)s.box(gx,gy,16,3,t.top);
+      if(t.road){if(gy==112&&(gx/16)%2)s.box(gx,gy+6,12,2,t.line)}else{s.box(gx,gy+9,16,1,t.line);s.box(gx+7,gy+3,1,6,t.line);s.box(gx+15,gy+10,1,6,t.line)}}},
+    blocks:(a,b)=>{[176,192,208].forEach((bx,i)=>{const col=i==1?G:a,ln=i==1?'#8f7524':b;s.box(bx,40,16,16,col);s.box(bx,40,16,1,ln);s.box(bx,55,16,1,ln);s.box(bx,40,1,16,ln);s.box(bx+15,40,1,16,ln);if(i==1){s.box(bx+6,44,4,2,ln);s.box(bx+9,46,2,3,ln);s.box(bx+7,49,2,2,ln);s.box(bx+7,52,2,1,ln)}else{s.box(bx,47,16,1,ln);s.box(bx+7,40,1,7,ln)}});
+      [[120,60],[134,54],[148,60]].forEach(([cx,cy])=>{s.box(cx,cy,4,6,G);s.box(cx+1,cy+1,1,4,'#fff3c4')})}
+  };
+  st.sc(s);hero(x,56,72,st.o);return c;
+}
+const list=document.getElementById('list'),route=document.getElementById('route');
+STAGES.forEach((st,i)=>{
+  route.insertAdjacentHTML('beforeend',(i?'<i>✈</i>':'')+`<span>${st.code}</span>`);
+  const el=document.createElement('section');el.className='pass';
+  el.innerHTML=`<div class="top"><span class="no">STAGE ${st.no}</span><h2>${st.name}</h2><span class="city">${st.city}</span><span class="code">${i?STAGES[i-1].code+' → ':''}${st.code}</span></div>`;
+  el.appendChild(scene(st));
+  const body=document.createElement('div');body.className='body';
+  const hb=document.createElement('div');hb.className='heroBox';const hc=mk(16,24);hero(hc.getContext('2d'),0,0,st.o);hb.appendChild(hc);
+  hb.insertAdjacentHTML('beforeend','<b>لبس البطل</b>');
+  body.appendChild(hb);
+  body.insertAdjacentHTML('beforeend',`<dl><dt>اللبس</dt><dd>${st.outfit}</dd><dt>العمارة</dt><dd>${st.arch}</dd><dt>الأرضية</dt><dd>${st.ground}</dd><dt>الأعداء</dt><dd>${st.enemy}</dd><dt>الموسيقى</dt><dd>${st.music}</dd><div class="sw">${st.pal.map(c=>`<i style="background:${c}"></i>`).join('')}</div></dl>`);
+  el.appendChild(body);list.appendChild(el);
+});
+</script>
