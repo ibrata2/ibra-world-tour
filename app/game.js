@@ -147,7 +147,7 @@
   function enterSewer() {
     const h = G.hero; SFX.pipe();
     G.main = { L: G.L, enemies: G.enemies, coins: G.coins, items: G.items };
-    setLevel(G.main.L.sewer.sub); h.x = 3 * T; h.y = 4 * T; h.vx = 0; h.vy = 0; G.cam = 0; playMusic('sewer');
+    setLevel(G.main.L.sewer.sub); h.x = 3 * T; h.y = 5 * T; h.vx = 0; h.vy = 0; G.cam = 0; playMusic(G.L.kind === 'bonus' ? 'power' : 'sewer');
   }
   function exitSewer() {
     const h = G.hero, m = G.main, s = m.L.sewer; SFX.pipe(); G.main = null;
@@ -339,8 +339,18 @@
     if (stepEnemies(dt, I)) return;
     if (stepBoss(dt)) return;
     // دخول وخروج المجاري
-    if (L.sewer && !G.main && h.ground && I.down && h.x + h.w / 2 > L.sewer.c * T + 10 && h.x + h.w / 2 < (L.sewer.c + 2) * T - 10 && h.y + h.h < (GROUND - 1) * T) { enterSewer(); return; }
-    if (L.kind === 'sewer' && h.x + h.w >= L.exitCol * T - 3 && h.y + h.h > (GROUND - 3) * T) { exitSewer(); return; }
+    if (L.sewer && !G.main && h.ground && I.down && !L.warps && h.x + h.w / 2 > L.sewer.c * T + 10 && h.x + h.w / 2 < (L.sewer.c + 2) * T - 10 && h.y + h.h < (GROUND - 1) * T) { enterSewer(); return; }
+    if (G.main && h.x + h.w >= L.exitCol * T - 3 && h.x < (L.exitCol + 1) * T && h.y + h.h > (GROUND - 3) * T) { exitSewer(); return; }
+    // أنابيب الانتقال السرية
+    if (L.warps && h.ground && I.down) for (const w of L.warps) if (h.x + h.w / 2 > w.c * T + 10 && h.x + h.w / 2 < (w.c + 2) * T - 10 && h.y + h.h < (GROUND - 1) * T) { SFX.pipe(); startStage(w.idx, true); return; }
+    // رسالة الحبيبة قبل الوحش
+    if (L.note && !L.note.got && Math.abs(h.x + h.w / 2 - (L.note.c + 0.5) * T) < 60 && h.y + h.h > (GROUND - 2) * T) {
+      L.note.got = true; SFX.item(); G.mode = 'msg'; G.msgT = 0; const st = G.stage;
+      G.msg = { title: st.noteKind === 'phone' ? 'رسالة على الهاتف' : 'رسالة على الأرض', lines: st.final ? ['«حبيبي، أني هنا بنيويورك، محبوسة ورا ' + st.bossName + '.', 'اغلبه وتعال، أني أنتظرك»'] : ['«حبيبي، نقلوني إلى ' + st.nextCity + '.', 'اكو وحش يسد الطريق: ' + st.bossName + '. لازم تغلبه', 'وتجيني إلى ' + st.nextCity + '. أنتظرك»'] };
+      return;
+    }
+    // أشياء تطير بالسما بالجولة الثانية والبطل يوعد حبيبته
+    if (L.birds) { if (!L.birds.on && h.x > L.birds.c * T) L.birds.on = true; if (L.birds.on) L.birds.t += dt; }
     // العلم
     if (h.x + h.w > L.flagCol * T + T / 2 - 8 && h.state === 'play') {
       h.state = 'slide'; h.x = L.flagCol * T + T / 2 - h.w - 2; h.vx = 0; h.vy = 0; h.slideT = 0;
@@ -369,13 +379,27 @@
   }
   const rnd = i => { const x = Math.sin(i * 127.1) * 43758.5453; return x - Math.floor(x); };
   function drawWorld() {
-    const L = G.L, cam = Math.round(G.cam), V = VARIANT[G.stage.variant] || VARIANT.day, sew = L.kind === 'sewer', W = water(), h = G.hero;
+    const L = G.L, cam = Math.round(G.cam), V = VARIANT[G.stage.variant] || VARIANT.day, sew = L.kind === 'sewer', bon = L.kind === 'bonus', W = water(), h = G.hero;
     if (sew) {
       const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, '#10140f'); g.addColorStop(1, '#232b1c'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
       ctx.globalAlpha = 0.16; for (let x = -((cam * 0.5) % 144); x < VW; x += 144) for (let y = 144; y < 936; y += 144) img('brick', x, y, 144, 144, '#333'); ctx.globalAlpha = 1;
+    } else if (bon) {
+      const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, '#5aa8f0'); g.addColorStop(0.7, '#ffe9a8'); g.addColorStop(1, '#fff6dc'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+      ctx.fillStyle = 'rgba(255,255,255,.9)'; for (let i = 0; i < 14; i++) { const x = ((rnd(i) * 2600 - cam * (0.2 + rnd(i + 3) * 0.3)) % 2400 + 2400) % 2400 - 240, y = 120 + rnd(i + 7) * 760, s = 60 + rnd(i + 11) * 90; ctx.beginPath(); ctx.ellipse(x, y, s * 1.7, s * 0.6, 0, 0, 7); ctx.ellipse(x - s * 0.6, y - s * 0.35, s * 0.8, s * 0.6, 0, 0, 7); ctx.ellipse(x + s * 0.5, y - s * 0.45, s, s * 0.7, 0, 0, 7); ctx.fill(); }
     } else {
       ctx.fillStyle = G.stage.sky; ctx.fillRect(0, 0, VW, VH); parallax('bg_far', 0.15);
       if (V.night) { ctx.fillStyle = '#fff'; for (let i = 0; i < 90; i++) { const tw = 0.5 + 0.5 * Math.sin(G.t * 2 + i); ctx.globalAlpha = 0.4 + 0.6 * tw; ctx.fillRect(rnd(i) * VW, rnd(i + 200) * 560, 4, 4); } ctx.globalAlpha = 1; ctx.fillStyle = '#f4f1d8'; ctx.beginPath(); ctx.arc(1500, 190, 76, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(244,241,216,.14)'; ctx.beginPath(); ctx.arc(1500, 190, 150, 0, 7); ctx.fill(); }
+      if (L.birds && L.birds.on && L.birds.t < 14) {   // سرب يعبر السما
+        const k = G.stage.fly, bt = L.birds.t;
+        for (let i = 0; i < (k === 'plane' ? 1 : 7); i++) {
+          const x = VW + 200 - bt * (k === 'plane' ? 330 : 210) + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 70 + Math.ceil(i / 2) * 60, y = 210 + Math.ceil(i / 2) * 44 + Math.sin(bt * 2 + i) * 12, fl = Math.sin(bt * 9 + i) * 16;
+          ctx.strokeStyle = '#2a2420'; ctx.fillStyle = '#2a2420'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+          if (k === 'bird') { ctx.beginPath(); ctx.moveTo(x - 30, y - fl); ctx.quadraticCurveTo(x - 12, y - 14, x, y); ctx.quadraticCurveTo(x + 12, y - 14, x + 30, y - fl); ctx.stroke(); }
+          else if (k === 'kite') { ctx.fillStyle = ['#e0452f', '#f2b632', '#2a8f7a', '#c8102e'][i % 4]; ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.lineTo(x + 24, y); ctx.lineTo(x, y + 40); ctx.lineTo(x - 24, y); ctx.fill(); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y + 40); ctx.quadraticCurveTo(x + 20, y + 90, x - 10, y + 130); ctx.stroke(); }
+          else if (k === 'lantern') { ctx.fillStyle = '#e8402a'; ctx.beginPath(); ctx.ellipse(x, y - bt * 6, 22, 30, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#ffd24a'; ctx.fillRect(x - 12, y - bt * 6 + 26, 24, 8); }
+          else { ctx.fillStyle = '#e8e8ee'; ctx.beginPath(); ctx.ellipse(x, y, 110, 18, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 10, y); ctx.lineTo(x + 70, y - 60); ctx.lineTo(x + 90, y - 60); ctx.lineTo(x + 50, y); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 90, y - 4); ctx.lineTo(x + 130, y - 40); ctx.lineTo(x + 140, y - 40); ctx.lineTo(x + 112, y + 4); ctx.fill(); }
+        }
+      }
       parallax('bg_mid', 0.4);
       if (V.fog) { const g = ctx.createLinearGradient(0, 300, 0, 940); g.addColorStop(0, 'rgba(255,240,236,0)'); g.addColorStop(1, 'rgba(255,240,236,.6)'); ctx.fillStyle = g; ctx.fillRect(0, 300, VW, 640); }
       if (V.glare) { const g = ctx.createRadialGradient(960, -100, 50, 960, -100, 1100); g.addColorStop(0, 'rgba(255,252,220,.75)'); g.addColorStop(1, 'rgba(255,252,220,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH); }
@@ -404,8 +428,15 @@
       for (let i = 1; i < p.h; i++) img('pipe_body', p.c * T, top + i * T, 2 * T, T + 1, '#2ea060');
       img('pipe_top', p.c * T, top, 2 * T, T, '#2ea060');
     }
-    if (L.sewer && !G.main) { const px = (L.sewer.c + 1) * T, py = (GROUND - 2) * T - 70 + Math.sin(G.t * 5) * 10; ctx.fillStyle = GOLD; ctx.strokeStyle = '#000'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(px - 26, py); ctx.lineTo(px + 26, py); ctx.lineTo(px, py + 38); ctx.closePath(); ctx.stroke(); ctx.fill(); }
-    if (L.kind === 'sewer') { const px = L.exitCol * T - 60 + Math.sin(G.t * 5) * 10, py = (GROUND - 1) * T - 20; ctx.fillStyle = GOLD; ctx.beginPath(); ctx.moveTo(px, py - 26); ctx.lineTo(px, py + 26); ctx.lineTo(px + 38, py); ctx.closePath(); ctx.fill(); }
+    if (L.sewer && !G.main && !L.sewer.secret) { const px = (L.sewer.c + 1) * T, py = (GROUND - 2) * T - 70 + Math.sin(G.t * 5) * 10; ctx.fillStyle = GOLD; ctx.strokeStyle = '#000'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(px - 26, py); ctx.lineTo(px + 26, py); ctx.lineTo(px, py + 38); ctx.closePath(); ctx.stroke(); ctx.fill(); }
+    if (L.warps) for (const w of L.warps) text(w.label, (w.c + 1) * T, (GROUND - 2) * T - 44, 30, GOLD);
+    if (L.note && !L.note.got) {   // رسالة أو هاتف على الأرض
+      const nx = (L.note.c + 0.5) * T, ny = GROUND * T - 44 + Math.sin(G.t * 4) * 6; ctx.shadowColor = '#fff3a0'; ctx.shadowBlur = 30;
+      if (G.stage.noteKind === 'phone') { ctx.fillStyle = '#1c1c22'; ctx.beginPath(); ctx.roundRect(nx - 20, ny - 36, 40, 72, 8); ctx.fill(); ctx.fillStyle = '#7fd0ff'; ctx.fillRect(nx - 15, ny - 28, 30, 50); }
+      else { ctx.fillStyle = '#f6ecd0'; ctx.beginPath(); ctx.roundRect(nx - 34, ny - 22, 68, 44, 5); ctx.fill(); ctx.strokeStyle = '#8a6a30'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(nx - 34, ny - 22); ctx.lineTo(nx, ny + 4); ctx.lineTo(nx + 34, ny - 22); ctx.stroke(); ctx.fillStyle = '#c0282e'; ctx.beginPath(); ctx.arc(nx, ny + 6, 8, 0, 7); ctx.fill(); }
+      ctx.shadowBlur = 0;
+    }
+    if (G.main) { const px = L.exitCol * T - 60 + Math.sin(G.t * 5) * 10, py = (GROUND - 1) * T - 20; ctx.fillStyle = GOLD; ctx.beginPath(); ctx.moveTo(px, py - 26); ctx.lineTo(px, py + 26); ctx.lineTo(px + 38, py); ctx.closePath(); ctx.fill(); }
     const cf = Math.floor(G.t * 9) % 4;
     for (const k of G.coins) if (!k.got && k.x > cam - T && k.x < cam + VW + T) img('coin', k.x - 30, k.y - 30, 60, 60, GOLD, cf * 128, 0, 128, 128);
     for (const e of G.enemies) {
@@ -429,6 +460,11 @@
       img('hero', -dw / 2 - 6 * k, -dh + 10 * k, dw, dh, '#111', fr * 192, 0, 192, 256);
       if (G.power === 2 && !h.dead) img('item_weapon', 6, -h.h * 0.52, 46, 46, GOLD);
       ctx.restore();
+    }
+    if (L.birds && L.birds.on && L.birds.t > 1 && L.birds.t < 7.5 && !h.dead) {   // فقاعة كلام
+      const bx = h.x + h.w / 2, by = h.y - 150, tw = 720; ctx.fillStyle = 'rgba(255,255,255,.96)'; ctx.strokeStyle = '#2a2420'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.roundRect(bx - tw / 2, by - 62, tw, 110, 24); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(bx - 18, by + 46); ctx.lineTo(bx, by + 78); ctx.lineTo(bx + 18, by + 46); ctx.fill();
+      ctx.font = `800 32px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl'; ctx.fillStyle = '#2a2420'; ctx.fillText('لعيونج حبيبتي...', bx, by - 30); ctx.fillText('مهما طال الطريق أوصلج وأجي أنقذج', bx, by + 14);
     }
     for (const it of G.items) {
       ctx.save(); ctx.beginPath(); ctx.rect(it.x - 20, it.r * T - 200, 110, it.rise < 1 ? 200 : 2000); ctx.clip();
@@ -454,7 +490,7 @@
   }
   function hud() {
     const g = ctx.createLinearGradient(0, 0, 0, 120); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, 120);
-    text(G.L.kind === 'sewer' ? G.stage.cityName + '  تحت الأرض' : G.stage.name, VW - 40, 46, 36, GOLD, 'right');
+    text(G.L.kind === 'sewer' ? G.stage.cityName + '  تحت الأرض' : G.L.kind === 'bonus' ? 'المرحلة السرية' : G.stage.name, VW - 40, 46, 36, GOLD, 'right');
     text(String(G.score).padStart(6, '0'), 1250, 46, 36, '#fff', 'right');
     img('coin', 880, 18, 56, 56, GOLD, 0, 0, 128, 128); text('× ' + G.coinsN, 950, 46, 36, '#fff', 'left');
     text('♥ ' + G.lives, 470, 46, 38, '#ff6b6b', 'left');
@@ -464,7 +500,7 @@
     text('الوقت  ' + Math.ceil(G.time), 50, 46, 36, G.time < 60 ? '#ff6b6b' : '#fff', 'left');
     const b = G.boss;
     if (b && G.bossOn && !b.dead) { text(G.stage.bossName, VW / 2, 130, 40, '#ff8a70'); ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(VW / 2 - 304, 160, 608, 30); ctx.fillStyle = '#e0452f'; ctx.fillRect(VW / 2 - 300, 164, 600 * Math.max(0, b.hp) / b.max, 22); }
-    if (G.L.sewer && !G.main && Math.abs(G.hero.x - (G.L.sewer.c + 1) * T) < 500) text('اوكف فوك الأنبوب واضغط السهم لجوه للنزول للمجاري', VW / 2, 220, 34, '#fff');
+    if (G.L.sewer && !G.main && !G.L.sewer.secret && Math.abs(G.hero.x - (G.L.sewer.c + 1) * T) < 500) text('اوكف فوك الأنبوب واضغط السهم لجوه للنزول للمجاري', VW / 2, 220, 34, '#fff');
   }
   function panel(title, lines, hint) {
     ctx.fillStyle = 'rgba(8,6,3,.72)'; ctx.fillRect(0, 0, VW, VH);
@@ -526,6 +562,7 @@
       drawWorld(); hud();
     }
     else if (G.mode === 'pause') { drawWorld(); hud(); panel('توقف مؤقت', ['P للرجوع للعب   •   Q لاختيار مرحلة ثانية', 'F5 يعيد تحميل التصاميم   •   F2 يفتح مجلد التصاميم'], 'اضغط P للمتابعة'); if (I.quit) G.mode = 'select'; else if (I.pause) { G.mode = 'play'; resumeMusic(); } }
+    else if (G.mode === 'msg') { drawWorld(); hud(); panel(G.msg.title, G.msg.lines, 'اضغط Enter للمتابعة'); if (I.start && G.msgT > 0.7) G.mode = 'play'; }
     else if (G.mode === 'clear') {
       const st = G.stage, nx = STAGES[G.stageIndex + 1]; drawWorld(); hud();
       if (st.final) panel('أخيراً التقيتوا!', ['لفّيت العالم كله ووصلت لصديقتك بنيويورك', 'النقاط: ' + G.score + '     العملات: ' + G.coinsN], 'اضغط Enter للرجوع للقائمة');

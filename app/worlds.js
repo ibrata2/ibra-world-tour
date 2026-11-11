@@ -36,13 +36,13 @@
         let last = '';
         chunks.coins(); chunks.boxes();
         while (x < len) {
-          if (o.sewer && !sew && x > len * 0.28) { sew = { c: x + 1 }; a.pipe(x + 1, 2); x += 7; continue; }        // مدخل المجاري
+          if ((o.sewer || o.secret) && !sew && x > len * (o.secret ? 0.42 : 0.28)) { sew = { c: x + 1 }; a.pipe(x + 1, o.secret ? 3 : 2); x += 7; continue; }   // مدخل المجاري أو المرحلة السرية
           if (sew && !exitDone && x > sew.c + 44) { sew.exit = x + 1; a.pipe(x + 1, 2); exitDone = true; x += 6; continue; }  // مخرج المجاري
           if (!cp && x > len * 0.5) { cp = true; a.checkpoint(x); a.coin(x, 10, 2); x += 4; }
           let c; do { c = R.pick(pool); } while (c === last); last = c; chunks[c](); n++;
         }
         if (sew && !exitDone) { sew.exit = x + 1; a.pipe(x + 1, 2); x += 6; }
-        if (o.boss) { a._boss = { from: x + 2, to: x + 26 }; a.coin(x + 8, 9, 3); a.power(x + 4, 9); x += 30; a.flag(x + 4); a.goal(x + 9); }
+        if (o.boss) { a._note = x - 3; a._boss = { from: x + 2, to: x + 26 }; a.coin(x + 8, 9, 3); a.power(x + 4, 9); x += 30; a.flag(x + 4); a.goal(x + 9); }
         else { a.stairUp(x + 2, 8); a.column(x + 10, 8); a.flag(x + 19); a.goal(x + 24); }
         a._foes = foes; a._sew = sew;
         // أنواع الأعداء تتغير حسب الجولة
@@ -52,30 +52,58 @@
       });
       L.enemies.forEach((e, i) => { e.type = L0._types[i]; });
       L.kind = 'land'; L.boss = L0._boss || null; L.width = L.goalCol + 12;
-      if (L0._sew) L.sewer = { c: L0._sew.c, exit: L0._sew.exit, sub: sewer(seed + 99, diff) };
+      if (L0._sew) L.sewer = { c: L0._sew.c, exit: L0._sew.exit, secret: !!o.secret, sub: o.secret ? bonus(seed + 7) : sewer(seed + 99, diff, o.warps) };
+      if (L0._note) L.note = { c: L0._note, got: false };
+      if (o.birds) L.birds = { c: 16, on: false, t: 0 };
       return L;
     }
   }
   let L0 = null;
 
   // ---------- المجاري (منطقة فرعية تحت الأرض) ----------
-  function sewer(seed, diff) {
-    const R = rng(seed), width = 64;
+  // بيها سر: فتحة بالسقف توصلك فوك السقف، تمشي فوكه وتعبر الحايط لغرفة بيها 4 أنابيب انتقال لمدن ثانية
+  function sewer(seed, diff, warps) {
+    const R = rng(seed), end = 60, width = warps ? 92 : 64;
     const L = makeLevel(width, (a) => {
-      for (let c = 0; c < width; c++) { a.block(c, 0); a.block(c, 1); }
-      for (let r = 2; r < GROUND; r++) { a.block(0, r); a.block(width - 1, r); a.block(width - 2, r); }
+      for (let c = 0; c < end + 2; c++) { a.block(c, 2); a.block(c, 3); }
+      for (let r = 0; r < GROUND; r++) a.block(0, r);
+      for (let r = 4; r < GROUND; r++) { a.block(end, r); a.block(end + 1, r); }
       let x = 6;
-      while (x < 50) {
+      while (x < (warps ? 34 : 48)) {
         const k = R.int(0, 3);
         if (k === 0) { a.coin(x, 10, 5); a.coin(x, 9, 5); a.coin(x + 1, 8, 3); x += 8; }
         else if (k === 1) { const n = R.int(4, 6); a.brick(x, 9, n); a.coin(x, 8, n); a.enemy(x + 2); x += n + 3; }
         else if (k === 2) { a.column(x, 2); a.column(x + 4, 3); a.coin(x + 1, 9, 3); a.enemy(x + 7); x += 9; }
         else { a.box(x, 9); a.power(x + 2, 9); a.box(x + 4, 9); a.enemy(x + 6); x += 9; }
       }
-      a.coin(51, 10, 4); a.pipe(57, 3);
+      a.coin(50, 10, 4); a.pipe(57, 3);
+      if (warps) {
+        a.brick(38, 10, 2); a.brick(41, 7, 2); a.block(44, 5); a.coin(44, 4);
+        for (let r = 0; r < GROUND; r++) { a.block(width - 1, r); a.block(width - 2, r); a.block(width - 3, r); }
+        warps.forEach((w, i) => a.pipe(67 + i * 5, 2));
+      } else for (let r = 0; r < GROUND; r++) { a.block(62, r); a.block(63, r); }
     });
+    if (warps) { [41, 42, 43, 44, 45, 46].forEach(c => { L.grid[2][c] = '.'; L.grid[3][c] = '.'; }); L.warps = warps.map((w, i) => ({ c: 67 + i * 5, idx: w.idx, label: w.label })); }
     L.kind = 'sewer'; L.exitCol = 57; L.flagCol = 9999; L.goalCol = 9999; L.checkpoint = 0;
     L.enemies.forEach(e => { e.type = 'walk'; });
+    return L;
+  }
+  // ---------- المرحلة السرية (فوك الغيوم): عملات وأرواح، بدون أعداء ----------
+  function bonus(seed) {
+    const R = rng(seed), width = 78;
+    const L = makeLevel(width, (a) => {
+      for (let r = 0; r < GROUND; r++) { a.block(0, r); a.block(width - 1, r); a.block(width - 2, r); }
+      let x = 5;
+      while (x < 58) {
+        const k = R.int(0, 3);
+        if (k === 0) { for (let r = 6; r <= 11; r++) a.coin(x, r, 6); x += 9; }
+        else if (k === 1) { a.block(x, 9); a.block(x + 1, 9); a.block(x + 3, 6); a.block(x + 4, 6); a.coin(x, 8, 2); a.coin(x + 3, 5, 2); a.coin(x + 2, 3, 4); x += 8; }
+        else if (k === 2) { a.box(x, 9); a.box(x + 1, 9); a.box(x + 2, 9); a.box(x + 3, 9); a.secret(x + 5, 9); x += 9; }
+        else { for (let i = 0; i < 7; i++) a.coin(x + i, 10 - Math.round(Math.sin(i / 6 * Math.PI) * 4)); x += 9; }
+      }
+      a.power(60, 9); a.star(62, 9); a.secret(64, 9); a.coin(66, 10, 3); a.pipe(72, 3);
+    });
+    L.kind = 'bonus'; L.exitCol = 72; L.flagCol = 9999; L.goalCol = 9999; L.checkpoint = 0;
     return L;
   }
 
@@ -135,11 +163,21 @@
     let level;
     if (ci === 0 && round === 1) level = () => { const L = HAND[1].level(); L.kind = 'land'; L.enemies.forEach(e => { e.type = 'walk'; }); return L; };
     else if (r.key === 'water') level = () => water(seed, diff);
-    else level = () => land(seed, diff, { round, sewer: r.key === 'sewer', boss: r.key === 'boss' });
+    else {
+      // أنابيب الانتقال السرية بجولة المجاري: 4 وجهات لمدن أبعد (نيويورك ما بيها)
+      let warps = null;
+      if (r.key === 'sewer' && ci < CITIES.length - 1) {
+        const t = []; for (let k = ci + 1; k < CITIES.length && t.length < 4; k++) t.push([k, 1]);
+        for (const rr of [5, 3, 7, 4]) { if (t.length >= 4) break; for (let k = ci + 1; k < CITIES.length && t.length < 4; k++) t.push([k, rr]); }
+        warps = t.map(([k, rr]) => ({ idx: 1 + k * 8 + (rr - 1), label: `${CITIES[k].short} ${k + 1}-${rr}` }));
+      }
+      level = () => land(seed, diff, { round, sewer: r.key === 'sewer', boss: r.key === 'boss', secret: r.key === 'dawn', birds: round === 2, warps });
+    }
     list.push({
       id: c.id, world: ci + 1, round, variant: r.key, cityName: c.short, label: r.label,
       name: round === 1 ? c.title : (r.key === 'water' ? `${base}  غوص ب${c.water}` : r.key === 'boss' ? `${base}  ${c.boss}` : `${base}  ${r.label}`),
       sky: c.sky, time: r.key === 'boss' ? 400 : 320, weapon: WEAPONS[c.id], bossName: c.boss, bossHp: 3 + Math.floor(ci / 2),
+      fly: ['bird', 'bird', 'bird', 'kite', 'lantern', 'plane'][ci], noteKind: ci === CITIES.length - 1 ? 'phone' : 'letter',
       final: ci === CITIES.length - 1 && r.key === 'boss', nextCity: CITIES[ci + 1] ? CITIES[ci + 1].short : null, era: c.era, style: c.style, tod: r.tod, level
     });
   }));

@@ -1,7 +1,7 @@
 Unicode true
 !include "MUI2.nsh"
 !define APP "IBRA World Tour"
-!define VER "0.5.0"
+!define VER "0.6.0"
 Name "${APP}"
 OutFile "..\dist\IBRA-World-Tour-Setup-${VER}.exe"
 InstallDir "$LOCALAPPDATA\Programs\${APP}"
