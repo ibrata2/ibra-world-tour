@@ -71,6 +71,7 @@
       jumpP: pressed.Space || pressed.ArrowUp || pressed.KeyW || (now.jump && !padPrev.jump),
       start: pressed.Enter || pressed.NumpadEnter || pressed.Space || (now.start && !padPrev.start) || (now.jump && !padPrev.jump),
       pause: pressed.KeyP || pressed.Escape || (now.start && !padPrev.start),
+      digit: STAGES.findIndex((s, i) => pressed['Digit' + (i + 1)] || pressed['Numpad' + (i + 1)]) + 1,
       fire: pressed.KeyZ || pressed.KeyF || pressed.ControlLeft || pressed.ControlRight || (now.fire && !padPrev.fire)
     };
     padPrev = now; pressed = {}; return st;
@@ -355,7 +356,7 @@
   function frame(now) {
     let d = Math.min(0.1, (now - last) / 1000); last = now; G.msgT += d;
     const I = input();
-    if (G.mode === 'title') { title(); const pick = STAGES.findIndex((s, i) => keys['Digit' + (i + 1)] || keys['Numpad' + (i + 1)]); if (pick >= 0) startStage(pick); else if (I.start) startStage(0); }
+    if (G.mode === 'title') { title(); const pick = I.digit ? I.digit - 1 : -1; if (pick >= 0) startStage(pick); else if (I.start) startStage(0); }
     else if (G.mode === 'loading') { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, VW, VH); text('جاري التحميل...', VW / 2, VH / 2, 56, GOLD); }
     else if (G.mode === 'play') {
       if (I.pause && !G.hero.dead) { G.mode = 'pause'; music.pause(); }
