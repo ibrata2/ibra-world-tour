@@ -19,7 +19,7 @@
 
   // ---------- تحميل الصور (الناقص ينرسم مستطيل بديل) ----------
   const IMG = {};
-  const FILES = { ground_top: 'ground_top.png', ground_fill: 'ground_fill.png', brick: 'brick.png', box: 'box.png', box_used: 'box_used.png', block: 'block.png', pipe_top: 'pipe_top.png', pipe_body: 'pipe_body.png', coin: 'coin.png', enemy1: 'enemy1.png', flag: 'flag.png', goal: 'goal.png', bg_far: 'bg_far.jpg', bg_mid: 'bg_mid.png' };
+  const FILES = { ground_top: 'ground_top.png', ground_fill: 'ground_fill.png', brick: 'brick.png', box: 'box.png', box_used: 'box_used.png', block: 'block.png', pipe_top: 'pipe_top.png', pipe_body: 'pipe_body.png', coin: 'coin.png', enemy1: 'enemy1.png', flag: 'flag.png', goal: 'goal.png', bg_far: 'bg_far.jpg', bg_mid: 'bg_mid.png', item_grow: 'item_grow.png', item_weapon: 'item_weapon.png', shot: 'shot.png' };
   function loadImg(key, src) {
     return new Promise(res => { const i = new Image(); i.onload = () => { IMG[key] = i; res(); }; i.onerror = () => { IMG[key] = null; res(); }; i.src = src + '?v=' + Date.now(); });
   }
@@ -43,7 +43,9 @@
     jump: () => beep(330, 760, 0.18), coin: () => { beep(988, 988, 0.07); setTimeout(() => beep(1319, 1319, 0.22), 70); },
     stomp: () => beep(420, 90, 0.16, 'triangle', 0.25), bump: () => beep(160, 110, 0.09, 'triangle', 0.25),
     brk: () => beep(220, 50, 0.22, 'sawtooth', 0.14), die: () => beep(520, 70, 0.8, 'triangle', 0.22),
-    win: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, f, 0.22), i * 140)), life: () => [659, 784, 1319].forEach((f, i) => setTimeout(() => beep(f, f, 0.14), i * 90))
+    win: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, f, 0.22), i * 140)), life: () => [659, 784, 1319].forEach((f, i) => setTimeout(() => beep(f, f, 0.14), i * 90)),
+    grow: () => [392, 523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, f, 0.09), i * 60)), shrink: () => [784, 587, 440, 330].forEach((f, i) => setTimeout(() => beep(f, f, 0.1, 'triangle', 0.2), i * 70)),
+    shoot: () => beep(900, 300, 0.1, 'square', 0.1), item: () => beep(200, 600, 0.35, 'triangle', 0.2)
   };
   function playMusic(st) { music.src = `assets/${st.id}/music.mp3`; music.muted = muted; music.play().catch(() => { }); }
 
@@ -62,37 +64,39 @@
   function input() {
     const p = (navigator.getGamepads ? [...navigator.getGamepads()].find(x => x) : null);
     const pb = i => !!(p && p.buttons[i] && p.buttons[i].pressed), ax = p ? p.axes[0] : 0;
-    const now = { jump: pb(0) || pb(1), start: pb(9) };
+    const now = { jump: pb(0) || pb(1), start: pb(9), fire: pb(2) };
     const st = {
       left: keys.ArrowLeft || keys.KeyA || ax < -0.4 || pb(14), right: keys.ArrowRight || keys.KeyD || ax > 0.4 || pb(15),
-      jump: keys.Space || keys.ArrowUp || keys.KeyW || now.jump, run: keys.ShiftLeft || keys.ShiftRight || keys.KeyX || pb(2) || pb(3),
+      jump: keys.Space || keys.ArrowUp || keys.KeyW || now.jump, run: keys.ShiftLeft || keys.ShiftRight || keys.KeyX || pb(3) || pb(5) || pb(7),
       jumpP: pressed.Space || pressed.ArrowUp || pressed.KeyW || (now.jump && !padPrev.jump),
       start: pressed.Enter || pressed.NumpadEnter || pressed.Space || (now.start && !padPrev.start) || (now.jump && !padPrev.jump),
-      pause: pressed.KeyP || pressed.Escape || (now.start && !padPrev.start)
+      pause: pressed.KeyP || pressed.Escape || (now.start && !padPrev.start),
+      fire: pressed.KeyZ || pressed.KeyF || pressed.ControlLeft || pressed.ControlRight || (now.fire && !padPrev.fire)
     };
     padPrev = now; pressed = {}; return st;
   }
 
   // ---------- الحالة ----------
-  const G = { mode: 'title', stageIndex: 0, stage: null, L: null, hero: null, enemies: [], coins: [], fx: [], cam: 0, score: 0, coinsN: 0, lives: 3, time: 0, t: 0, msgT: 0, respawnCol: 2 };
+  const G = { mode: 'title', stageIndex: 0, stage: null, L: null, hero: null, enemies: [], coins: [], fx: [], cam: 0, score: 0, coinsN: 0, lives: 3, time: 0, t: 0, msgT: 0, respawnCol: 2, power: 0, items: [], shots: [] };
   window.__game = G;
   try { G.best = +localStorage.getItem('iwt_best') || 0; } catch (e) { G.best = 0; }
 
-  const solid = ch => ch === '#' || ch === 'B' || ch === '?' || ch === 'U' || ch === 'S' || ch === 'P';
+  const HH = [76, 124, 124];   // ارتفاع البطل: صغير، كبير، مسلح
+  const solid = ch => ch === '#' || ch === 'B' || ch === '?' || ch === 'M' || ch === 'U' || ch === 'S' || ch === 'P';
   function cell(c, r) { if (r < 0) return '.'; if (r >= ROWS || c < 0 || c >= G.L.width) return c < 0 || c >= G.L.width ? 'S' : '.'; return G.L.grid[r][c]; }
 
   async function startStage(i, keep) {
     G.mode = 'loading'; G.stageIndex = i; G.stage = STAGES[i];
     await loadStage(G.stage);
-    if (!keep) { G.score = 0; G.coinsN = 0; G.lives = 3; G.respawnCol = 2; }
+    if (!keep) { G.score = 0; G.coinsN = 0; G.lives = 3; G.respawnCol = 2; G.power = 0; }
     resetLevel(); playMusic(G.stage); G.mode = 'play';
   }
   function resetLevel() {
     const L = G.L = G.stage.level();
     G.enemies = L.enemies.map(e => ({ x: e.c * T + 6, y: (e.row + 1) * T - 60, w: 60, h: 60, vx: -110, vy: 0, dead: 0, on: false }));
     G.coins = L.coins.map(c => ({ x: c.c * T + T / 2, y: c.row * T + T / 2, got: false }));
-    G.fx = []; G.time = G.stage.time; G.t = 0;
-    G.hero = { x: G.respawnCol * T, y: GROUND * T - 100, w: 44, h: 100, vx: 0, vy: 0, ground: false, face: 1, anim: 0, dead: 0, inv: 0, coyote: 0, buf: 0, state: 'play', slideT: 0 };
+    G.fx = []; G.items = []; G.shots = []; G.time = G.stage.time; G.t = 0;
+    G.hero = { x: G.respawnCol * T, y: GROUND * T - HH[G.power], w: 44, h: HH[G.power], cool: 0, vx: 0, vy: 0, ground: false, face: 1, anim: 0, dead: 0, inv: 0, coyote: 0, buf: 0, state: 'play', slideT: 0 };
     G.cam = Math.max(0, G.hero.x - VW * 0.4);
   }
 
@@ -119,9 +123,57 @@
     const ch = cell(c, r), g = G.L.grid;
     G.enemies.forEach(e => { if (!e.dead && e.ground && Math.abs(e.y + e.h - r * T) < 4 && e.x + e.w > c * T && e.x < (c + 1) * T) { e.dead = 0.01; e.vy = -500; e.flip = true; G.score += 100; } });
     G.coins.forEach(k => { if (!k.got && Math.floor(k.x / T) === c && Math.floor(k.y / T) === r - 1) getCoin(k); });
-    if (ch === '?') { g[r][c] = 'U'; G.fx.push({ type: 'pop', x: c * T + T / 2, y: r * T, t: 0 }); G.fx.push({ type: 'bounce', c, r, t: 0 }); addCoin(); G.score += 200; }
-    else if (ch === 'B') { g[r][c] = '.'; SFX.brk(); G.score += 50; for (let i = 0; i < 4; i++) G.fx.push({ type: 'shard', x: c * T + T / 2, y: r * T + T / 2, vx: (i % 2 ? 1 : -1) * (160 + i * 40), vy: -700 - (i > 1 ? 250 : 0), t: 0 }); }
+    if (ch === 'M') {
+      g[r][c] = 'U'; G.fx.push({ type: 'bounce', c, r, t: 0 }); SFX.item();
+      const type = G.power === 0 ? 'grow' : 'weapon';
+      G.items.push({ type, x: c * T + 6, y: r * T, w: 60, h: 60, vx: 0, vy: 0, rise: 0, r, dir: G.hero.face });
+    }
+    else if (ch === '?') { g[r][c] = 'U'; G.fx.push({ type: 'pop', x: c * T + T / 2, y: r * T, t: 0 }); G.fx.push({ type: 'bounce', c, r, t: 0 }); addCoin(); G.score += 200; }
+    else if (ch === 'B' && G.power === 0) { SFX.bump(); G.fx.push({ type: 'bounce', c, r, t: 0 }); }
+    else if (ch === 'B') { breakBrick(c, r); }
     else SFX.bump();
+  }
+  function breakBrick(c, r) {
+    G.L.grid[r][c] = '.'; SFX.brk(); G.score += 50;
+    for (let i = 0; i < 4; i++) G.fx.push({ type: 'shard', x: c * T + T / 2, y: r * T + T / 2, vx: (i % 2 ? 1 : -1) * (160 + i * 40), vy: -700 - (i > 1 ? 250 : 0), t: 0 });
+  }
+  function setPower(p) { const h = G.hero, old = h.h; G.power = p; h.h = HH[p]; h.y -= h.h - old; }
+  // لمسة العدو تنزل البطل درجة: مسلح ← كبير ← صغير ← يخسر محاولة
+  function hurt() {
+    if (G.power > 0) { setPower(G.power - 1); G.hero.inv = 2; SFX.shrink(); return false; }
+    killHero(); return true;
+  }
+  function killEnemy(e) { e.dead = 0.01; e.vy = -500; e.flip = true; G.score += 100; SFX.stomp(); G.fx.push({ type: 'spark', x: e.x + 30, y: e.y + 20, t: 0 }); }
+  function fire() {
+    const h = G.hero, W = G.stage.weapon; if (G.power < 2 || h.cool > 0 || G.shots.length >= W.max) return;
+    h.cool = W.cool; SFX.shoot();
+    G.shots.push({ x: h.x + h.w / 2 + h.face * 30 - 14, y: h.y + h.h * 0.55, w: 28, h: 28, vx: h.face * W.speed, vy: W.vy, t: 0, n: 0 });
+  }
+  function stepItems(dt) {
+    const h = G.hero;
+    for (const it of G.items) {
+      if (it.rise < 1) { it.rise = Math.min(1, it.rise + dt * 2.2); it.y = it.r * T - it.h * it.rise - (it.rise >= 1 ? 0.5 : 0); if (it.rise >= 1 && it.type === 'grow') it.vx = 150 * it.dir; }
+      else { it.vy += 2600 * dt; moveBody(it, dt); if (it.hitWall) { it.dir = -it.dir; it.vx = 150 * it.dir; } if (it.y > VH + 200) it.gone = true; }
+      if (!it.gone && it.rise > 0.5 && hit(h, it)) {
+        it.gone = true; G.score += 1000; SFX.grow(); G.fx.push({ type: 'spark', x: it.x + 30, y: it.y + 30, t: 0 });
+        if (it.type === 'grow') { if (G.power < 1) setPower(1); } else setPower(2);
+      }
+    }
+    G.items = G.items.filter(i => !i.gone);
+    const W = G.stage.weapon;
+    for (const s of G.shots) {
+      s.t += dt; s.vy += W.gravity * dt;
+      const nx = s.x + s.vx * dt + (s.vx > 0 ? s.w : 0), c = Math.floor(nx / T), r = Math.floor((s.y + s.h / 2) / T);
+      if (solid(cell(c, r))) {   // صدمة بحايط
+        if (W.breaks && cell(c, r) === 'B') breakBrick(c, r);
+        s.gone = true; G.fx.push({ type: 'spark', x: s.x + 14, y: s.y + 14, t: 0 }); continue;
+      }
+      moveBody(s, dt);
+      if (s.ground) { if (W.bounce && s.n < W.bounce) { s.vy = -620; s.n++; } else { s.gone = true; G.fx.push({ type: 'spark', x: s.x + 14, y: s.y + 14, t: 0 }); } }
+      for (const e of G.enemies) if (!e.dead && e.on && hit(s, e)) { killEnemy(e); s.gone = true; break; }
+      if (s.t > 2.5 || s.x < G.cam - 100 || s.x > G.cam + VW + 100 || s.y > VH) s.gone = true;
+    }
+    G.shots = G.shots.filter(x => !x.gone);
   }
   function addCoin() { G.coinsN++; SFX.coin(); if (G.coinsN % 100 === 0) { G.lives++; SFX.life(); } }
   function getCoin(k) { k.got = true; addCoin(); G.score += 100; G.fx.push({ type: 'spark', x: k.x, y: k.y, t: 0 }); }
@@ -136,7 +188,7 @@
     const h = G.hero; G.t += dt;
     if (h.dead) {
       h.dead += dt; if (h.dead > 0.4) { h.vy += 2600 * dt; h.y += h.vy * dt; }
-      if (h.dead > 2.6) { if (G.lives <= 0) { G.mode = 'over'; G.msgT = 0; saveBest(); } else { resetLevel(); music.currentTime = 0; music.play().catch(() => { }); } }
+      if (h.dead > 2.6) { if (G.lives <= 0) { G.mode = 'over'; G.msgT = 0; saveBest(); } else { G.power = 0; resetLevel(); music.currentTime = 0; music.play().catch(() => { }); } }
       return;
     }
     if (h.state === 'slide') {
@@ -161,11 +213,13 @@
     h.vy += (h.vy < 0 && I.jump ? 1450 : 3300) * dt; if (h.vy > 1350) h.vy = 1350;
     if (h.x < G.cam && h.vx < 0) { h.x = G.cam; h.vx = 0; }
     moveBody(h, dt, bump);
-    h.anim += Math.abs(h.vx) * dt / 34; if (h.inv > 0) h.inv -= dt;
+    h.anim += Math.abs(h.vx) * dt / 34; if (h.inv > 0) h.inv -= dt; if (h.cool > 0) h.cool -= dt;
+    if (I.fire) fire();
+    stepItems(dt);
     if (h.y > VH + 200) { killHero(); return; }
     if (G.L.checkpoint && h.x > G.L.checkpoint * T) G.respawnCol = G.L.checkpoint;
     // عملات
-    for (const k of G.coins) if (!k.got && Math.abs(k.x - (h.x + h.w / 2)) < 50 && Math.abs(k.y - (h.y + h.h / 2)) < 76) getCoin(k);
+    for (const k of G.coins) if (!k.got && Math.abs(k.x - (h.x + h.w / 2)) < 50 && Math.abs(k.y - (h.y + h.h / 2)) < h.h / 2 + 26) getCoin(k);
     // أعداء
     for (const e of G.enemies) {
       if (e.dead) { e.dead += dt; if (e.flip) { e.vy += 2600 * dt; e.y += e.vy * dt; } continue; }
@@ -175,7 +229,7 @@
       if (e.y > VH + 200) e.dead = 9;
       if (hit(h, e)) {
         if (h.vy > 120 && h.y + h.h - e.y < 46) { e.dead = 0.01; h.vy = I.jump ? -900 : -560; G.score += 100; SFX.stomp(); G.fx.push({ type: 'spark', x: e.x + 30, y: e.y, t: 0 }); }
-        else if (h.inv <= 0) { killHero(); return; }
+        else if (h.inv <= 0) { if (hurt()) return; }
       }
     }
     // العلم
@@ -218,7 +272,7 @@
       const x = c * T, y = r * T + (bounce[c + ',' + r] || 0);
       if (ch === '#') img(r > 0 && L.grid[r - 1][c] === '#' ? 'ground_fill' : 'ground_top', x, y, T + 1, T + 1, '#8b5a2b');
       else if (ch === 'B') img('brick', x, y, T, T, '#c0392b');
-      else if (ch === '?') img('box', x, y, T, T, GOLD);
+      else if (ch === '?' || ch === 'M') img('box', x, y, T, T, GOLD);
       else if (ch === 'U') img('box_used', x, y, T, T, '#786046');
       else if (ch === 'S') img('block', x, y, T, T, '#968a7c');
     }
@@ -242,10 +296,18 @@
     const h = G.hero;
     if (!(h.inv > 0 && Math.floor(G.t * 20) % 2)) {
       let fr = 0; if (h.dead || !h.ground && h.state !== 'slide') fr = 4; else if (Math.abs(h.vx) > 20 || h.state === 'walk') fr = 1 + Math.floor(h.anim) % 3;
-      const dw = 108, dh = 144;
+      const k = G.power ? 1.2 : 0.78, dw = 108 * k, dh = 144 * k;
       ctx.save(); ctx.translate(h.x + h.w / 2, h.y + h.h); ctx.scale(h.face, 1);
-      img('hero', -dw / 2 - 6, -dh + 10, dw, dh, '#111', fr * 192, 0, 192, 256); ctx.restore();
+      img('hero', -dw / 2 - 6 * k, -dh + 10 * k, dw, dh, '#111', fr * 192, 0, 192, 256);
+      if (G.power === 2 && !h.dead) img('item_weapon', 6, -h.h * 0.52, 46, 46, GOLD);
+      ctx.restore();
     }
+    // الجوائز والمقذوفات
+    for (const it of G.items) {
+      ctx.save(); ctx.beginPath(); ctx.rect(it.x - 20, it.r * T - 200, 110, it.rise < 1 ? 200 : 2000); ctx.clip();
+      img(it.type === 'grow' ? 'item_grow' : 'item_weapon', it.x - 6, it.y - 12, 72, 72, it.type === 'grow' ? '#e33' : GOLD); ctx.restore();
+    }
+    for (const sh of G.shots) { ctx.save(); ctx.translate(sh.x + 14, sh.y + 14); ctx.rotate(sh.t * 14 * Math.sign(sh.vx)); img('shot', -20, -20, 40, 40, '#fff'); ctx.restore(); }
     // مؤثرات
     for (const f of G.fx) {
       if (f.type === 'pop') { const y = f.y - 40 - Math.sin(Math.min(1, f.t / 0.45) * Math.PI) * 150; if (f.t < 0.45) img('coin', f.x - 30, y - 30, 60, 60, GOLD, (Math.floor(f.t * 30) % 4) * 128, 0, 128, 128); }
@@ -260,6 +322,8 @@
     text('النقاط  ' + String(G.score).padStart(6, '0'), VW - 520, 46, 36, '#fff', 'right');
     img('coin', 880, 18, 56, 56, GOLD, 0, 0, 128, 128); text('× ' + G.coinsN, 950, 46, 36, '#fff', 'left');
     text('♥ ' + G.lives, 470, 46, 38, '#ff6b6b', 'left');
+    if (G.power >= 1) img('item_grow', 600, 18, 56, 56, '#e33');
+    if (G.power >= 2) { img('item_weapon', 664, 18, 56, 56, GOLD); text('Z', 740, 48, 30, GOLD, 'left'); }
     text('الوقت  ' + Math.ceil(G.time), 50, 46, 36, G.time < 60 ? '#ff6b6b' : '#fff', 'left');
   }
   function panel(title, lines, hint) {
@@ -280,7 +344,7 @@
     ctx.font = `800 96px ${FONT}`; ctx.fillStyle = '#f1e9d6'; ctx.fillText('W O R L D   T O U R', VW / 2, 440);
     text('جولة حول مدن العالم', VW / 2, 540, 48, GOLD, 'center', 600);
     if (Math.floor(G.msgT * 2) % 2 === 0) text('اضغط Enter للبدء', VW / 2, 700, 56);
-    text('الأسهم أو A / D للحركة   •   Space للقفز   •   Shift للركض   •   P توقف   •   M كتم الصوت', VW / 2, 850, 32, '#a89d85', 'center', 500);
+    text('الأسهم أو A / D للحركة   •   Space للقفز   •   Shift للركض   •   Z للضرب   •   P توقف   •   M كتم الصوت', VW / 2, 850, 32, '#a89d85', 'center', 500);
     text('اختيار مرحلة مباشرة:  ' + STAGES.map((s, i) => (i + 1) + ' ' + s.name).join('   •   '), VW / 2, 920, 30, '#f1e9d6', 'center', 600);
     if (G.best) text('أعلى نتيجة  ' + G.best, VW / 2, 970, 30, '#f1e9d6', 'center', 600);
     text('تصميم وتطوير إبراهيم الخزرجي   •   t.me/ibraprogram', VW / 2, 1020, 28, '#8f7524', 'center', 500);
