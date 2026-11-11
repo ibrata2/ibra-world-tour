@@ -25,9 +25,9 @@ body{margin:0;background:#14110b;color:#f1e9d6;font-family:"Noto Sans Arabic","S
 h1{color:#d4af37;margin:0 0 6px;font-size:44px}p{color:#b9ad92;font-size:20px;margin:4px 0 22px}
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #3a3427;padding:12px 14px;text-align:right;font-size:20px;vertical-align:middle}
 th{color:#d4af37}td.f{font-family:monospace;direction:ltr;text-align:left;color:#fff}td.s{white-space:nowrap;color:#ffe88c}td.i{background:#2a3a55;text-align:center;width:330px}img{max-height:120px;max-width:300px}li{font-size:20px;margin:6px 0}
-</style><h1>دليل تصميم المرحلة %s: %s</h1>
+</style><h1>دليل تصميم المرحلة @N: @NAME</h1>
 <p>كل ملف تصممه بنفس الاسم ونفس القياس بالضبط وترجعه. الخلفية شفافة (PNG) عدا bg_far.</p>
-<table><tr><th>الملف</th><th>القياس بالبكسل</th><th>شنو هو</th><th>الحالي</th></tr>''' % (n, name)
+<table><tr><th>الملف</th><th>القياس بالبكسل</th><th>شنو هو</th><th>الحالي</th></tr>'''.replace('@NAME', name).replace('@N', n)
 for files, desc in rows:
     w, hh = Image.open(os.path.join(K, files[0])).size
     h += f'<tr><td class="f">{"<br>".join(files)}</td><td class="s">العرض {w} × الارتفاع {hh}</td><td>{desc}</td><td class="i">' + ' '.join(f'<img src="{kit}/{f}">' for f in files) + '</td></tr>'
