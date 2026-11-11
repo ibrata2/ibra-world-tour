@@ -31,6 +31,7 @@
     return L;
   }
 
+  window.makeLevel = makeLevel;
   window.STAGES = [
     {
       id: 'stage1', name: 'شارع البداية', city: 'المرحلة الكلاسيكية', time: 300, sky: '#6ec3ff',

@@ -15,6 +15,8 @@ rows = [([S+'ground_top.png'], 'سطح الأرضية (الوجه اللي يم�
  ([S+'pipe_top.png', S+'pipe_body.png'], 'راس العمود، وجسمه (الجسم يتكرر عمودي)'),
  ([S+'coin.png'], 'العملة: 4 إطارات دوران جنب بعض بنفس العرض'),
  ([S+'enemy1.png'], 'العدو: 3 إطارات جنب بعض (مشي 1، مشي 2، مسحوق)، وجهه لليمين'),
+ ([S+'enemy_water.png'], 'عدو مرحلة الغوص (سمكة): 3 إطارات جنب بعض (سباحة 1، سباحة 2، مهزوم)، وجهه لليمين'),
+ ([S+'boss.png'], 'وحش الجولة الثامنة: 3 إطارات جنب بعض كل واحد 256 × 256 (حركة 1، حركة 2، مهزوم)، وجهه لليمين'),
  ([f'hero/stage{n}.png'], 'البطل بلبس المرحلة: 5 إطارات جنب بعض (واقف، ركض 1، ركض 2، ركض 3، قفز)، وجهه لليمين والقدم على أسفل الإطار'),
  ([S+'item_grow.png'], 'جائزة التكبير اللي تطلع من الصندوق وتكبّر البطل'),
  ([S+'item_weapon.png'], 'جائزة السلاح (تطلع من الصندوق إذا البطل كبير) وتظهر بإيده وبأعلى الشاشة'),
@@ -38,7 +40,7 @@ for files, desc in rows:
     h += f'<tr><td class="f">{"<br>".join(files)}</td><td class="s">العرض {w} × الارتفاع {hh}</td><td>{desc}</td><td class="i">' + ' '.join(f'<img src="{kit}/{f}">' for f in files) + '</td></tr>'
 h += f'''<tr><td class="f">{S}music.mp3</td><td class="s">حوالي 30 ثانية، تتكرر</td><td>موسيقى المرحلة. عدلها أو بدلها بأي طول، بس خلي نهايتها تركب على بدايتها</td><td class="i">♪</td></tr>
 <tr><td class="f">{S}music_power.mp3</td><td class="s">أي طول، تتكرر</td><td>موسيقى وقت الحماية، تشتغل بدل موسيقى المرحلة لحد ما يخلص الوقت. إذا حذفتها اللعبة تسرّع موسيقى المرحلة بدالها</td><td class="i">♪</td></tr></table>
-<ul><li>تريد دقة أعلى؟ تكدر تصمم بضعف القياس بشرط تبقى نفس النسبة.</li><li>داخل اللعبة: F2 يفتح مجلد التصاميم، و F5 يعيد تحميلها فوراً.</li></ul></html>'''
+<ul><li>كل مدينة تنلعب 8 جولات. إذا تريد تصميم خاص لجولة معينة، سوي مجلد باسم r2 أو r3 ... لحد r8 داخل مجلد المرحلة وحط بيه الملف بنفس الاسم (صورة أو موسيقى). الملف الموجود بمجلد الجولة ينستخدم مثل ما هو، والناقص ياخذ من الأساسي مع تغيير ألوان تلقائي.</li><li>لبس خاص للبطل بجولة معينة: hero/stage@N_r3.png مثلاً.</li><li>تريد دقة أعلى؟ تكدر تصمم بضعف القياس بشرط تبقى نفس النسبة.</li><li>داخل اللعبة: F2 يفتح مجلد التصاميم، و F5 يعيد تحميلها فوراً.</li></ul></html>'''
 open(os.path.join(out, 'guide.html'), 'w', encoding='utf8').write(h)
 js = "const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1600,height:900}});await p.goto('file://'+process.cwd()+'/guide.html');await p.waitForTimeout(500);await p.screenshot({path:'%s/دليل_التصميم.png',fullPage:true});await b.close()})()" % kit
 subprocess.run(['node', '-e', js], cwd=out, check=True); os.remove(os.path.join(out, 'guide.html'))
