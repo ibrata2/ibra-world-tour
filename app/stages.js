@@ -57,6 +57,35 @@
         a.stairUp(168, 8); a.column(176, 8);
         a.flag(185); a.goal(190);
       })
+    },
+    {
+      id: 'stage2', name: 'بغداد زمن الوالي', city: 'بغداد، العراق', time: 320, sky: '#f8c97d',
+      next: 'ليالي خان الخليلي',
+      level: () => makeLevel(222, (a) => {
+        a.coin(7, 10, 4);
+        a.brick(12, 9, 3); a.box(13, 9); a.enemy(17);
+        a.pipe(21, 2); a.coin(21, 9, 2);
+        a.box(26, 9); a.box(28, 9); a.box(27, 5); a.enemy(29); a.enemy(31);
+        a.gap(34, 35); a.coinArc(33, 9);
+        a.column(38, 2); a.column(41, 3); a.column(44, 4); a.coin(44, 7); a.enemy(46);
+        a.brick(49, 9, 7); a.box(51, 9); a.box(54, 9); a.brick(51, 5, 3); a.coin(51, 4, 3); a.enemy(52, 8);
+        a.pipe(59, 3); a.enemy(63); a.enemy(65);
+        a.gap(68, 71); a.coinArc(68, 9);
+        a.stairUp(74, 3); a.column(77, 3); a.gap(78, 80); a.stairDown(81, 3); a.coinArc(77.5, 7);
+        a.box(87, 9); a.brick(88, 9, 2); a.box(90, 9); a.enemy(89); a.enemy(92); a.enemy(94);
+        a.pipe(97, 4); a.pipe(102, 2);
+        a.checkpoint(106);
+        a.brick(108, 9, 3); a.brick(113, 6, 3); a.brick(118, 9, 3); a.coin(113, 5, 3); a.box(114, 2);
+        a.enemy(112); a.enemy(116); a.enemy(120);
+        a.gap(123, 124); a.gap(128, 129); a.coinArc(122, 9); a.coinArc(127, 9); a.enemy(126);
+        a.pipe(133, 3); a.enemy(137); a.pipe(140, 3); a.coin(135, 11, 4);
+        a.brick(145, 9, 10); a.box(147, 9); a.box(150, 9); a.box(153, 9); a.enemy(148, 8); a.enemy(152, 8); a.enemy(149); a.enemy(156);
+        a.gap(159, 161); a.coinArc(158.5, 9);
+        a.column(165, 2); a.gap(166, 167); a.column(168, 4); a.gap(169, 170); a.column(171, 6); a.coin(168, 7); a.coin(171, 5);
+        a.enemy(176); a.enemy(178);
+        a.stairUp(182, 8); a.column(190, 8);
+        a.flag(199); a.goal(204);
+      })
     }
   ];
 })();

@@ -281,7 +281,8 @@
     text('جولة حول مدن العالم', VW / 2, 540, 48, GOLD, 'center', 600);
     if (Math.floor(G.msgT * 2) % 2 === 0) text('اضغط Enter للبدء', VW / 2, 700, 56);
     text('الأسهم أو A / D للحركة   •   Space للقفز   •   Shift للركض   •   P توقف   •   M كتم الصوت', VW / 2, 850, 32, '#a89d85', 'center', 500);
-    if (G.best) text('أعلى نتيجة  ' + G.best, VW / 2, 920, 34, '#f1e9d6', 'center', 600);
+    text('اختيار مرحلة مباشرة:  ' + STAGES.map((s, i) => (i + 1) + ' ' + s.name).join('   •   '), VW / 2, 920, 30, '#f1e9d6', 'center', 600);
+    if (G.best) text('أعلى نتيجة  ' + G.best, VW / 2, 970, 30, '#f1e9d6', 'center', 600);
     text('تصميم وتطوير إبراهيم الخزرجي   •   t.me/ibraprogram', VW / 2, 1020, 28, '#8f7524', 'center', 500);
   }
 
@@ -290,7 +291,7 @@
   function frame(now) {
     let d = Math.min(0.1, (now - last) / 1000); last = now; G.msgT += d;
     const I = input();
-    if (G.mode === 'title') { title(); if (I.start) startStage(0); }
+    if (G.mode === 'title') { title(); const pick = STAGES.findIndex((s, i) => keys['Digit' + (i + 1)] || keys['Numpad' + (i + 1)]); if (pick >= 0) startStage(pick); else if (I.start) startStage(0); }
     else if (G.mode === 'loading') { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, VW, VH); text('جاري التحميل...', VW / 2, VH / 2, 56, GOLD); }
     else if (G.mode === 'play') {
       if (I.pause && !G.hero.dead) { G.mode = 'pause'; music.pause(); }
@@ -299,7 +300,11 @@
       drawWorld(); hud();
     }
     else if (G.mode === 'pause') { drawWorld(); hud(); panel('توقف مؤقت', ['P أو Esc للرجوع للعب', 'F5 يعيد تحميل التصاميم   •   F2 يفتح مجلد التصاميم'], 'اضغط P للمتابعة'); if (I.pause) { G.mode = 'play'; music.play().catch(() => { }); } }
-    else if (G.mode === 'clear') { drawWorld(); hud(); panel('أحسنت! خلصت المرحلة', ['النقاط: ' + G.score + '     العملات: ' + G.coinsN, 'المحطة الجاية: ' + G.stage.next + ' (قيد التصميم)'], 'اضغط Enter للرجوع للقائمة'); if (I.start && G.msgT > 1) { G.mode = 'title'; G.respawnCol = 2; } }
+    else if (G.mode === 'clear') {
+      const nx = STAGES[G.stageIndex + 1];
+      drawWorld(); hud(); panel('أحسنت! خلصت المرحلة', ['النقاط: ' + G.score + '     العملات: ' + G.coinsN, 'المحطة الجاية: ' + (nx ? nx.name : G.stage.next + ' (قيد التصميم)')], nx ? 'اضغط Enter للسفر للمحطة الجاية' : 'اضغط Enter للرجوع للقائمة');
+      if (I.start && G.msgT > 1) { G.respawnCol = 2; if (nx) startStage(G.stageIndex + 1, true); else G.mode = 'title'; }
+    }
     else if (G.mode === 'over') { drawWorld(); panel('انتهت المحاولات', ['النقاط: ' + G.score], 'اضغط Enter للمحاولة من جديد'); if (I.start && G.msgT > 1) { G.mode = 'title'; G.respawnCol = 2; } }
     requestAnimationFrame(frame);
   }

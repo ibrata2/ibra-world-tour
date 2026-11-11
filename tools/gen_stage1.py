@@ -223,4 +223,5 @@ def hero():
     for i, p in enumerate(['idle', 'run1', 'run2', 'run3', 'jump']): hero_frame(d, i * 192, p)
     save(im, os.path.join(HERO, 'stage1.png'), 960, 256)
 
-for f in (lambda: ground(True), lambda: ground(False), brick, lambda: box(False), lambda: box(True), block, pipe, coin, enemy, flag, goal, bg_far, bg_mid, hero): f()
+if __name__ == '__main__':
+  for f in (lambda: ground(True), lambda: ground(False), brick, lambda: box(False), lambda: box(True), block, pipe, coin, enemy, flag, goal, bg_far, bg_mid, hero): f()
