@@ -26,12 +26,8 @@ jobs:
           npx cap add android
           cp mobile/MainActivity.java android/app/src/main/java/com/ibraprogram/worldtour/MainActivity.java
           sed -i 's/android:name=".MainActivity"/android:name=".MainActivity" android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
-          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            n=${d%%:*}; s=${d##*:}
-            convert build/icon.png -resize ${s}x${s} android/app/src/main/res/mipmap-$n/ic_launcher.png
-            cp android/app/src/main/res/mipmap-$n/ic_launcher.png android/app/src/main/res/mipmap-$n/ic_launcher_round.png
-            convert build/icon.png -resize $((s*108/48*48/72))x$((s*108/48*48/72)) -gravity center -background none -extent $((s*108/48))x$((s*108/48)) android/app/src/main/res/mipmap-$n/ic_launcher_foreground.png
-          done
+          cp -R mobile/icons/mipmap-* android/app/src/main/res/
+          sed -i 's/#FFFFFF/#14110A/' android/app/src/main/res/values/ic_launcher_background.xml || true
           npx cap sync android
       - name: Build APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
@@ -62,8 +58,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UIStatusBarHidden bool true" $P || /usr/libexec/PlistBuddy -c "Set :UIStatusBarHidden true" $P
           /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" $P || true
           /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool false" $P || /usr/libexec/PlistBuddy -c "Set :UIViewControllerBasedStatusBarAppearance false" $P
-          sips -z 1024 1024 build/icon.png --out ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
-          sips -s format jpeg ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png --out /tmp/i.jpg && sips -s format png /tmp/i.jpg --out ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          cp mobile/icons/ios-1024.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           npx cap sync ios
       - name: Build without signing
         run: |
