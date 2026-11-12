@@ -35,7 +35,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: android-apk, path: IBRA-World-Tour.apk }
   ios:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
