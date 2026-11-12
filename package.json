@@ -1,7 +1,7 @@
 {
   "name": "ibra-world-tour",
   "productName": "IBRA World Tour",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "IBRA World Tour - 2D platformer",
   "author": "Ibrahim Al-Khazraji",
   "main": "main.js",

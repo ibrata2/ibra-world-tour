@@ -5,10 +5,11 @@
   const GOLD = '#d4af37';
   const FONT = '"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif';
 
+  const TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   function fit() {
     const dpr = window.devicePixelRatio || 1, s = Math.min(innerWidth / VW, innerHeight / VH);
     cv.style.width = Math.floor(VW * s) + 'px'; cv.style.height = Math.floor(VH * s) + 'px';
-    const pw = Math.min(3840, Math.round(VW * s * dpr)), ph = Math.round(pw * VH / VW);
+    const pw = Math.min(TOUCH ? 1920 : 3840, Math.round(VW * s * dpr)), ph = Math.round(pw * VH / VW);
     if (cv.width !== pw) { cv.width = pw; cv.height = ph; }
     ctx.setTransform(cv.width / VW, 0, 0, cv.height / VH, 0, 0); ctx.imageSmoothingQuality = 'high';
   }
@@ -33,7 +34,7 @@
   function tryLoad(paths) {   // يجرب المسارات بالترتيب، ويرجع الصورة ورقم المسار اللي نجح
     return new Promise(res => { let i = 0; const next = () => { if (i >= paths.length) return res(null); const im = new Image(), k = i++; im.onload = () => res({ im, k }); im.onerror = next; im.src = paths[k] + '?v=' + Date.now(); }; next(); });
   }
-  function bake(im, filter) { if (!filter) return im; const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); x.filter = filter; x.drawImage(im, 0, 0); return c; }
+  function bake(im, filter) { if (!filter) return im; const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); if (!('filter' in x)) return im; x.filter = filter; x.drawImage(im, 0, 0); return c; }
   function loadStage(st) {
     const V = VARIANT[st.variant] || VARIANT.day, dir = `assets/${st.id}/`, rdir = `${dir}r${st.round}/`, jobs = [];
     const grp = (files, filter) => Object.entries(files).forEach(([k, f]) => jobs.push(tryLoad(st.world ? [rdir + f, dir + f] : [dir + f]).then(r => { IMG[k] = r ? (r.k === 0 && st.world ? r.im : bake(r.im, filter)) : null; })));
@@ -92,6 +93,39 @@
     if (e.code === 'F11' && window.ibra) { e.preventDefault(); window.ibra.toggleFullscreen(); }
   });
   addEventListener('keyup', e => { keys[e.code] = false; });
+  // ---------- أزرار اللمس (موبايل) ----------
+  const PADS = [
+    { k: 'ArrowLeft', x: 150, y: 900, r: 100, t: '◀' }, { k: 'ArrowRight', x: 400, y: 900, r: 100, t: '▶' }, { k: 'ArrowDown', x: 275, y: 1010, r: 60, t: '▼' },
+    { k: 'Space', x: 1740, y: 880, r: 120, t: 'قفز' }, { k: 'KeyZ', x: 1500, y: 960, r: 90, t: 'ضرب' }, { k: 'ShiftLeft', x: 1560, y: 730, r: 80, t: 'ركض' }, { k: 'KeyP', x: 1850, y: 170, r: 50, t: 'II' }
+  ];
+  let touchOn = false, touchHeld = {};
+  function tpos(t) { const r = cv.getBoundingClientRect(); return { x: (t.clientX - r.left) * VW / r.width, y: (t.clientY - r.top) * VH / r.height }; }
+  function touches(e, start) {
+    e.preventDefault(); touchOn = true; ac();
+    if (G.mode !== 'play') {
+      if (!start) return; const p = tpos(e.changedTouches[0]);
+      if (G.mode === 'title' && p.x < 260 && p.y > 960) { pressed.KeyI = true; return; }
+      if (G.mode === 'select') { if (p.y < 130) { pressed.Escape = true; return; } const hit = SELCELLS.find(c => p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h); if (hit) { G.sel = hit.idx; pressed.Enter = true; } return; }
+      if (G.mode === 'pause') { if (p.y > 800) pressed.KeyQ = true; else pressed.KeyP = true; return; }
+      pressed.Enter = true; return;
+    }
+    const held = {};
+    for (const t of e.touches) { const p = tpos(t); for (const b of PADS) if (Math.hypot(p.x - b.x, p.y - b.y) < b.r * 1.25) held[b.k] = true; }
+    for (const b of PADS) { if (held[b.k] && !touchHeld[b.k]) pressed[b.k] = true; keys[b.k] = !!held[b.k]; }
+    touchHeld = held;
+  }
+  cv.addEventListener('touchstart', e => touches(e, true), { passive: false }); cv.addEventListener('touchmove', e => touches(e, false), { passive: false });
+  cv.addEventListener('touchend', e => touches(e, false), { passive: false }); cv.addEventListener('touchcancel', e => touches(e, false), { passive: false });
+  const SELCELLS = [];
+  function drawPads() {
+    if (!touchOn) return;
+    for (const b of PADS) {
+      if (b.k === 'KeyZ' && G.power < 2) continue; if (b.k === 'ArrowDown' && !(G.L.sewer || G.L.warps)) continue;
+      ctx.globalAlpha = keys[b.k] ? 0.7 : 0.38; ctx.fillStyle = '#14110b'; ctx.strokeStyle = GOLD; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.globalAlpha = 0.9; ctx.font = `800 ${b.t.length > 2 ? b.r * 0.42 : b.r * 0.7}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl'; ctx.fillStyle = '#f1e9d6'; ctx.fillText(b.t, b.x, b.y + 4);
+    }
+    ctx.globalAlpha = 1;
+  }
   let padPrev = {};
   function input() {
     const p = (navigator.getGamepads ? [...navigator.getGamepads()].find(x => x) : null);
@@ -103,7 +137,7 @@
       jump: keys.Space || keys.ArrowUp || keys.KeyW || now.jump, run: keys.ShiftLeft || keys.ShiftRight || keys.KeyX || pb(3) || pb(5) || pb(7),
       jumpP: pressed.Space || pressed.ArrowUp || pressed.KeyW || edge('jump'),
       start: pressed.Enter || pressed.NumpadEnter || pressed.Space || edge('start') || edge('jump'),
-      pause: pressed.KeyP || pressed.Escape || edge('start'), back: pressed.Escape || pressed.Backspace, quit: pressed.KeyQ,
+      pause: pressed.KeyP || pressed.Escape || edge('start'), back: pressed.Escape || pressed.Backspace, quit: pressed.KeyQ, about: pressed.KeyI,
       fire: pressed.KeyZ || pressed.KeyF || pressed.ControlLeft || pressed.ControlRight || edge('fire'),
       mL: pressed.ArrowLeft || pressed.KeyA || edge('l'), mR: pressed.ArrowRight || pressed.KeyD || edge('r'), mU: pressed.ArrowUp || pressed.KeyW || edge('u'), mD: pressed.ArrowDown || pressed.KeyS || edge('d')
     };
@@ -505,7 +539,7 @@
   function panel(title, lines, hint) {
     ctx.fillStyle = 'rgba(8,6,3,.72)'; ctx.fillRect(0, 0, VW, VH);
     ctx.fillStyle = 'rgba(28,25,19,.95)'; ctx.strokeStyle = GOLD; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(VW / 2 - 620, 250, 1240, 560, 28); ctx.fill(); ctx.stroke();
-    text(title, VW / 2, 350, 76, GOLD); lines.forEach((l, i) => text(l, VW / 2, 470 + i * 70, 42, '#f1e9d6', 'center', 600));
+    text(title, VW / 2, 350, 76, GOLD); lines.forEach((l, i) => text(l, VW / 2, 450 + i * 64, 42, '#f1e9d6', 'center', 600));
     if (Math.floor(G.msgT * 2) % 2 === 0) text(hint, VW / 2, 740, 40, '#fff');
   }
   function backdrop() {
@@ -521,7 +555,9 @@
     if (Math.floor(G.msgT * 2) % 2 === 0) text('اضغط Enter للبدء', VW / 2, 700, 56);
     text('الأسهم أو A / D للحركة   •   Space للقفز   •   Shift للركض   •   Z للضرب   •   P توقف   •   M كتم الصوت', VW / 2, 850, 32, '#a89d85', 'center', 500);
     if (G.best) text('أعلى نتيجة  ' + G.best, VW / 2, 930, 30, '#f1e9d6', 'center', 600);
-    text('تصميم وتطوير إبراهيم الخزرجي   •   t.me/ibraprogram', VW / 2, 1020, 28, '#8f7524', 'center', 500);
+    text('برمجة وتطوير ابراهيم الخزرجي', VW / 2, 1020, 28, '#8f7524', 'center', 500);
+    ctx.fillStyle = 'rgba(40,36,28,.95)'; ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(40, 980, 200, 70, 14); ctx.fill(); ctx.stroke(); text(touchOn ? 'حول' : 'حول  ( I )', 140, 1016, 30, GOLD);
+    if (touchOn) { ctx.fillStyle = '#0d0b07'; ctx.fillRect(0, 810, VW, 80); text('المس الشاشة للبدء، وأزرار التحكم تظهر داخل المرحلة', VW / 2, 850, 34, '#a89d85', 'center', 500); }
   }
   // شاشة اختيار المرحلة: صف لكل مدينة و8 جولات
   function select(I) {
@@ -532,18 +568,20 @@
     backdrop(); text('اختار المرحلة', VW / 2, 80, 64, GOLD);
     const cw = 176, xr = VW - 330, y0 = 190, rh = 112;   // العمود الأول يمين (الواجهة عربية)
     for (let i = 0; i < 8; i++) text(ROUND_LABELS[i], xr - i * cw - cw / 2, y0 - 44, 28, '#a89d85', 'center', 600);
+    SELCELLS.length = 0;
     for (let wi = 0; wi < 7; wi++) {
       const y = y0 + wi * rh; text(CITY_NAMES[wi], VW - 60, y + 42, 42, wi === w ? GOLD : '#f1e9d6', 'right');
       for (let ri = 0; ri < (wi === 0 ? 1 : 8); ri++) {
         const idx = wi === 0 ? 0 : 1 + (wi - 1) * 8 + ri, x = xr - (ri + 1) * cw + 8, on = idx === G.sel;
         ctx.fillStyle = on ? GOLD : G.done[idx] ? 'rgba(60,110,70,.9)' : 'rgba(40,36,28,.95)'; ctx.strokeStyle = on ? '#fff' : '#5a5040'; ctx.lineWidth = on ? 5 : 2;
+        SELCELLS.push({ x, y, w: cw - 16, h: 84, idx });
         ctx.beginPath(); ctx.roundRect(x, y, cw - 16, 84, 14); ctx.fill(); ctx.stroke();
         text(wi === 0 ? 'تدريب' : wi + '-' + (ri + 1), x + (cw - 16) / 2, y + 42, 36, on ? '#1a1509' : '#f1e9d6');
         if (G.done[idx]) text('✓', x + 26, y + 22, 24, '#bff5c8');
       }
     }
     text(STAGES[G.sel].name + '   •   ' + (STAGES[G.sel].tod || ''), VW / 2, 1000, 38, '#fff');
-    text('الأسهم للتنقل   •   Enter للدخول   •   Esc رجوع', VW / 2, 1050, 26, '#a89d85', 'center', 500);
+    text(touchOn ? 'المس المرحلة للدخول   •   المس العنوان فوك للرجوع' : 'الأسهم للتنقل   •   Enter للدخول   •   Esc رجوع', VW / 2, 1050, 26, '#a89d85', 'center', 500);
     if (I.back) G.mode = 'title'; else if (I.enter) startStage(G.sel);
   }
 
@@ -552,16 +590,17 @@
   function frame(now) {
     const d = Math.min(0.1, (now - last) / 1000); last = now; G.msgT += d;
     const enter = pressed.Enter || pressed.NumpadEnter, I = input(); I.enter = enter || (I.start && !I.jumpP);
-    if (G.mode === 'title') { title(); if (I.start) G.mode = 'select'; }
+    if (G.mode === 'title') { title(); if (I.about) { G.mode = 'about'; G.msgT = 0; } else if (I.start) G.mode = 'select'; }
+    else if (G.mode === 'about') { backdrop(); panel('حول اللعبة', ['IBRA World Tour', 'برمجة وتطوير ابراهيم الخزرجي', 'تيليكرام: https://t.me/ibraprogram', 'تيك توك: ibraprogram'], touchOn ? 'المس الشاشة للرجوع' : 'اضغط Enter للرجوع'); if ((I.start || I.back) && G.msgT > 0.4) G.mode = 'title'; }
     else if (G.mode === 'select') select(I);
     else if (G.mode === 'loading') { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, VW, VH); text(G.stage.name, VW / 2, VH / 2 - 40, 64, GOLD); text(G.stage.tod || '', VW / 2, VH / 2 + 50, 36, '#f1e9d6', 'center', 500); }
     else if (G.mode === 'play') {
       if (I.pause && !G.hero.dead) { G.mode = 'pause'; pauseAll(); }
       accT += d; let first = true;
       while (accT >= DT) { step(DT, first ? I : Object.assign({}, I, { jumpP: false, fire: false })); first = false; accT -= DT; if (G.mode !== 'play') break; }
-      drawWorld(); hud();
+      drawWorld(); hud(); drawPads();
     }
-    else if (G.mode === 'pause') { drawWorld(); hud(); panel('توقف مؤقت', ['P للرجوع للعب   •   Q لاختيار مرحلة ثانية', 'F5 يعيد تحميل التصاميم   •   F2 يفتح مجلد التصاميم'], 'اضغط P للمتابعة'); if (I.quit) G.mode = 'select'; else if (I.pause) { G.mode = 'play'; resumeMusic(); } }
+    else if (G.mode === 'pause') { drawWorld(); hud(); panel('توقف مؤقت', touchOn ? ['المس فوك للمتابعة', 'المس جوه الشاشة لاختيار مرحلة ثانية'] : ['P للرجوع للعب   •   Q لاختيار مرحلة ثانية', 'F5 يعيد تحميل التصاميم   •   F2 يفتح مجلد التصاميم'], touchOn ? 'المس للمتابعة' : 'اضغط P للمتابعة'); if (I.quit) G.mode = 'select'; else if (I.pause) { G.mode = 'play'; resumeMusic(); } }
     else if (G.mode === 'msg') { drawWorld(); hud(); panel(G.msg.title, G.msg.lines, 'اضغط Enter للمتابعة'); if (I.start && G.msgT > 0.7) G.mode = 'play'; }
     else if (G.mode === 'clear') {
       const st = G.stage, nx = STAGES[G.stageIndex + 1]; drawWorld(); hud();

@@ -1,0 +1,8 @@
+{
+  "appId": "com.ibraprogram.worldtour",
+  "appName": "IBRA World Tour",
+  "webDir": "app",
+  "backgroundColor": "#000000",
+  "android": { "backgroundColor": "#000000" },
+  "ios": { "backgroundColor": "#000000", "contentInset": "never", "scrollEnabled": false }
+}
