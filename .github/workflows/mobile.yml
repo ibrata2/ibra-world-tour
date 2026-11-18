@@ -1,15 +1,25 @@
-name: Mobile builds (Android APK + unsigned iOS IPA)
+name: Builds (Windows installer + Android APK + unsigned iOS IPA)
 on:
   workflow_dispatch:
   push:
     tags: ['v*']
     branches: [main]
-    paths: ['app/**', 'mobile/**', 'capacitor.config.json', '.github/workflows/mobile.yml']
+    paths: ['app/**', 'mobile/**', 'capacitor.config.json', 'package.json', 'main.js', '.github/workflows/mobile.yml']
 permissions:
   contents: write
 env:
   CAP: '6.2.0'
 jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install --no-audit --no-fund
+      - run: npx electron-builder --win nsis --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: windows-installer, path: dist/IBRA-World-Tour-Setup.exe }
   android:
     runs-on: ubuntu-latest
     steps:
@@ -72,7 +82,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: ios-unsigned-ipa, path: IBRA-World-Tour-unsigned.ipa }
   release:
-    needs: [android, ios]
+    needs: [windows, android, ios]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -80,8 +90,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: mobile-latest
-          name: IBRA World Tour - Mobile
-          body: Android APK and unsigned iPhone IPA.
+          name: IBRA World Tour
+          body: Windows installer, Android APK and unsigned iPhone IPA.
           files: |
+            IBRA-World-Tour-Setup.exe
             IBRA-World-Tour.apk
             IBRA-World-Tour-unsigned.ipa

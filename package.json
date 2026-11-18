@@ -1,7 +1,7 @@
 {
   "name": "ibra-world-tour",
   "productName": "IBRA World Tour",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "IBRA World Tour - 2D platformer",
   "author": "Ibrahim Al-Khazraji",
   "main": "main.js",
@@ -11,7 +11,7 @@
     "appId": "com.ibraprogram.worldtour",
     "asar": false,
     "files": ["main.js", "preload.js", "app/**/*", "build/icon.ico"],
-    "win": { "target": "nsis", "icon": "build/icon.ico", "signAndEditExecutable": false },
-    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "IBRA World Tour", "artifactName": "IBRA-World-Tour-Setup-${version}.exe" }
+    "win": { "target": "nsis", "icon": "build/icon.ico" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "IBRA World Tour", "artifactName": "IBRA-World-Tour-Setup.exe" }
   }
 }

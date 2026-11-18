@@ -591,7 +591,7 @@
     const d = Math.min(0.1, (now - last) / 1000); last = now; G.msgT += d;
     const enter = pressed.Enter || pressed.NumpadEnter, I = input(); I.enter = enter || (I.start && !I.jumpP);
     if (G.mode === 'title') { title(); if (I.about) { G.mode = 'about'; G.msgT = 0; } else if (I.start) G.mode = 'select'; }
-    else if (G.mode === 'about') { backdrop(); panel('حول اللعبة', ['IBRA World Tour', 'برمجة وتطوير ابراهيم الخزرجي', 'تيليكرام: https://t.me/ibraprogram', 'تيك توك: ibraprogram'], touchOn ? 'المس الشاشة للرجوع' : 'اضغط Enter للرجوع'); if ((I.start || I.back) && G.msgT > 0.4) G.mode = 'title'; }
+    else if (G.mode === 'about') { backdrop(); panel('حول اللعبة', ['برمجة وتطوير ابراهيم الخزرجي', 'الموقع: https://ibraprogram.netlify.app/', 'تيليكرام: https://t.me/ibraprogram', 'تيك توك: ibraprogram'], touchOn ? 'المس الشاشة للرجوع' : 'اضغط Enter للرجوع'); if ((I.start || I.back) && G.msgT > 0.4) G.mode = 'title'; }
     else if (G.mode === 'select') select(I);
     else if (G.mode === 'loading') { ctx.fillStyle = '#0a0806'; ctx.fillRect(0, 0, VW, VH); text(G.stage.name, VW / 2, VH / 2 - 40, 64, GOLD); text(G.stage.tod || '', VW / 2, VH / 2 + 50, 36, '#f1e9d6', 'center', 500); }
     else if (G.mode === 'play') {
