@@ -4,7 +4,7 @@ on:
   push:
     tags: ['v*']
     branches: [main]
-    paths: ['app/**', 'mobile/**', 'capacitor.config.json', 'package.json', 'main.js', '.github/workflows/mobile.yml']
+    paths: ['app/**', 'build/**', 'mobile/**', 'capacitor.config.json', 'package.json', 'main.js', '.github/workflows/mobile.yml']
 permissions:
   contents: write
 env:
