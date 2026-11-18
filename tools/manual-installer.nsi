@@ -8,8 +8,8 @@ InstallDir "$LOCALAPPDATA\Programs\${APP}"
 InstallDirRegKey HKCU "Software\${APP}" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-!define MUI_ICON "icon.ico"
-!define MUI_UNICON "icon.ico"
+!define MUI_ICON "..\build\icon.ico"
+!define MUI_UNICON "..\build\icon.ico"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${APP}.exe"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
